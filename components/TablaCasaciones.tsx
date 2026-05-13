@@ -171,7 +171,7 @@ export default function TablaCasaciones({
 
                   {/* 👁️ VER PDF EN PAGINA */}
                   <a
-                    href={`http://143.244.163.112:3000/pdfjs/web/viewer.html?file=http://143.244.163.112:3000${casacion.url_pdf}#page=${casacion.pagina}&search=${encodeURIComponent(busqueda)}`}
+                    href={`/api/proxy/pdfjs/web/viewer.html?file=/api/proxy${casacion.url_pdf}#page=${casacion.pagina}&search=${encodeURIComponent(busqueda)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -180,7 +180,7 @@ export default function TablaCasaciones({
 
                   {/* ⬇️ DESCARGAR */}
                   <a
-                    href={`http://143.244.163.112:3000${casacion.url_pdf}`}
+                    href={`/api/proxy${casacion.url_pdf}`}
                     download
                     className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-lg hover:bg-emerald-500/20 transition-colors"
                   >

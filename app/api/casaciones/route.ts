@@ -11,7 +11,7 @@ type DocCasacion = {
 // 🔥 Backend API
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
-  'http://143.244.163.112:3000'
+  '/api/proxy'
 
 // 🔥 Auth opcional
 const AUTH_REQUIRED =
@@ -168,7 +168,7 @@ export async function GET(
           ediciones: {
 
             download_url:
-              'http://143.244.163.112:3000' +
+              '/api/proxy' +
               doc.url_pdf,
           },
 

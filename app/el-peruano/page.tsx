@@ -95,7 +95,7 @@ export default function ElPeruanoPage() {
       }
 
       const response = await fetch(
-        `http://143.244.163.112:3000/search/casaciones_nuevo?${params.toString()}`
+        `/api/proxy/search/casaciones_nuevo?${params.toString()}`
       )
 
       const data: ApiBusquedaResponse =
@@ -227,9 +227,9 @@ export default function ElPeruanoPage() {
           {resultados.map((resultado, index) => {
 
             const pdfViewerUrl =
-              `http://143.244.163.112:3000/pdfjs/web/viewer.html?file=` +
+              `/api/proxy/pdfjs/web/viewer.html?file=` +
               encodeURIComponent(
-                `http://143.244.163.112:3000${resultado.url_pdf}`
+                `/api/proxy${resultado.url_pdf}`
               ) +
               `#page=${resultado.pagina}&search=${search}`
 
@@ -286,7 +286,7 @@ export default function ElPeruanoPage() {
 
                       {/* DESCARGAR */}
                       <a
-                        href={`http://143.244.163.112:3000${resultado.url_pdf}`}
+                        href={`/api/proxy${resultado.url_pdf}`}
                         download
                         className="px-4 py-2 rounded-xl text-sm font-medium bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition"
                       >

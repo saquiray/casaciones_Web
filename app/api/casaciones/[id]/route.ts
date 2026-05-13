@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 // 🔥 Nuevo backend
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://143.244.163.112:3000'
+  process.env.NEXT_PUBLIC_API_URL || '/api/proxy'
 
 export async function GET(
   request: NextRequest,
