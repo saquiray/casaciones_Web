@@ -2,7 +2,11 @@ import { NextRequest } from "next/server"
 
 const BACKEND = "http://143.244.163.112:3000"
 
-export async function GET(req: NextRequest, context: any) {
+type Context = {
+  params: Promise<{ path: string[] }>
+}
+
+export async function GET(req: NextRequest, context: Context): Promise<Response> {
   const { path } = await context.params
 
   const url = new URL(req.url)
@@ -16,13 +20,11 @@ export async function GET(req: NextRequest, context: any) {
 
   const contentType = res.headers.get("content-type") || ""
 
-  // 🔥 IMPORTANTE: NO asumir JSON
   if (contentType.includes("application/json")) {
     const data = await res.json()
     return Response.json(data)
   }
 
-  // 🔥 PDF / HTML / archivos
   const buffer = await res.arrayBuffer()
 
   return new Response(buffer, {
