@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
 import { createClient } from '@/lib/supabase-server'
 import { verificarCuota, incrementarUso } from '@/lib/uso'
 
+type DocCasacion = {
+  id?: string
+  titulo?: string
+  fecha?: string
+  url_pdf?: string
+}
 // 🔥 Backend API
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -147,7 +152,7 @@ export async function GET(
     const casaciones =
       (data.results || []).map(
         (
-          doc: any,
+          doc: DocCasacion,
           index: number
         ) => ({
 

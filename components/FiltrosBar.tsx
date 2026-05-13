@@ -8,12 +8,12 @@ interface FiltrosBarProps {
   onBuscar: () => void
 }
 
-const TIPOS = [
+/*const TIPOS = [
   { value: '', label: 'Todos' },
   { value: 'CIV', label: 'Civil' },
   { value: 'LAB', label: 'Laboral' },
   { value: 'PREV', label: 'Previsional' },
-]
+]*/
 
 const ANIOS = [
   { value: '', label: 'Todos' },
