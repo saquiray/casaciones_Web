@@ -1,110 +1,589 @@
+'use client'
+
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 
-export default function PoderJudicialPage() {
+import UserMenu from '@/components/UserMenu'
+import ModalUpgrade from '@/components/ModalUpgrade'
+import ModalDetalle from '@/components/ModalDetalle'
+
+import { useAuth } from '@/components/AuthProvider'
+import { TESAURO_DATA } from '@/lib/tesauroData'
+
+const STOPWORDS = [
+  'de',
+  'la',
+  'el',
+  'los',
+  'las',
+  'y',
+  'o',
+  'en',
+  'del',
+  'al',
+  'por',
+  'para',
+  'con',
+]
+
+interface ResultadoBusqueda {
+  id: string
+  score: number
+  titulo: string
+  fuente: string
+  url_pdf: string
+  pagina: number
+  chunk: number
+  mes: string
+  anio: string
+  nombre_archivo: string
+  highlight?: {
+    contenido?: string[]
+  }
+}
+
+interface ApiBusquedaResponse {
+  total: number
+  results: ResultadoBusqueda[]
+}
+
+interface TesaurioNode {
+  id: number
+  nombre: string
+  slug: string
+  code: string
+  count: number
+  children?: TesaurioNode[]
+}
+
+const AUTH_REQUIRED =
+  process.env.NEXT_PUBLIC_ENABLE_PAYMENTS === 'true'
+
+export default function ElPeruanoPage() {
+  const { user, loading: authLoading } = useAuth()
+
+  const [busqueda, setBusqueda] = useState('')
+  const [busquedaDebounced, setBusquedaDebounced] =
+    useState('')
+  const [mes, setMes] = useState('')
+  const [anio, setAnio] = useState(
+    new Date().getFullYear().toString()
+  )
+
+  const [resultados, setResultados] = useState<
+    ResultadoBusqueda[]
+  >([])
+
+  const [total, setTotal] = useState(0)
+
+  const [cargando, setCargando] = useState(false)
+
+  const [showUpgradeModal, setShowUpgradeModal] =
+    useState(false)
+
+  const [casacionSeleccionada, setCasacionSeleccionada] =
+    useState<number | null>(null)
+
+  /**
+   * TESAURO
+   */
+
+  const [selectedTesaurioPath, setSelectedTesaurioPath] =
+    useState<TesaurioNode[]>([])
+
+  const selectedTesaurioSlug = useMemo(() => {
+    if (selectedTesaurioPath.length === 0) return ''
+
+    return selectedTesaurioPath[
+      selectedTesaurioPath.length - 1
+    ].slug
+  }, [selectedTesaurioPath])
+
+  const getNodesForLevel = (
+    level: number
+  ): TesaurioNode[] => {
+    if (level === 0) {
+      return TESAURO_DATA as TesaurioNode[]
+    }
+
+    const parent = selectedTesaurioPath[level - 1]
+
+    if (!parent?.children?.length) {
+      return []
+    }
+
+    return parent.children
+  }
+
+  const handleSelectTesaurioLevel = (
+    level: number,
+    slug: string
+  ) => {
+    if (!slug) {
+      setSelectedTesaurioPath(prev =>
+        prev.slice(0, level)
+      )
+
+      return
+    }
+
+    const nodes = getNodesForLevel(level)
+
+    const selectedNode = nodes.find(
+      node => node.slug === slug
+    )
+
+    if (!selectedNode) return
+
+    setSelectedTesaurioPath(prev => {
+      const newPath = prev.slice(0, level)
+
+      newPath[level] = selectedNode
+
+      return newPath
+    })
+  }
+
+  const getSelectedValueForLevel = (
+    level: number
+  ) => {
+    return selectedTesaurioPath[level]?.slug || ''
+  }
+
+  const getTesaurioLevelsToRender = () => {
+    const levels: number[] = [0]
+
+    selectedTesaurioPath.forEach(
+      (node, index) => {
+        if (node.children?.length) {
+          levels.push(index + 1)
+        }
+      }
+    )
+
+    return levels
+  }
+
+  const getTesaurioLevelTitle = (
+    level: number
+  ) => {
+    if (level === 0) return 'Materia'
+
+    if (level === 1) return 'Submateria'
+
+    if (level === 2) return 'Tema'
+
+    if (level === 3) return 'Subtema'
+
+    return `Nivel ${level + 1}`
+  }
+
+  /**
+   * BUSQUEDA
+   */
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setBusquedaDebounced(busqueda)
+    }, 500)
+
+    return () => clearTimeout(timeout)
+  }, [busqueda])
+  const cargarResultados = useCallback(async () => {
+    if (AUTH_REQUIRED && !user) return
+
+    setCargando(true)
+
+    try {
+      const params = new URLSearchParams()
+
+      if (busquedaDebounced?.trim()) {
+        params.set('q', busquedaDebounced)
+      }
+
+      if (selectedTesaurioSlug) {
+        params.set(
+          'tesaurio_slug',
+          selectedTesaurioSlug
+        )
+      }
+
+      const response = await fetch(
+        `/api/proxy/search/sentencias_nuevo?${params.toString()}`
+      )
+
+      const data: ApiBusquedaResponse =
+        await response.json()
+
+      setResultados(data.results || [])
+      setTotal(data.total || 0)
+    } catch (error) {
+      console.error('Error buscando:', error)
+
+      setResultados([])
+      setTotal(0)
+    } finally {
+      setCargando(false)
+    }
+  }, [
+    busquedaDebounced,
+    mes,
+    anio,
+    selectedTesaurioSlug,
+    user,
+  ])
+
+  useEffect(() => {
+    if (AUTH_REQUIRED) {
+      if (!authLoading && user) {
+        cargarResultados()
+      }
+    } else {
+      cargarResultados()
+    }
+  }, [
+    authLoading,
+    user,
+    cargarResultados,
+  ])
+
+  const handleBuscar = () => {
+    cargarResultados()
+  }
+
+  const busquedaLimpia = busquedaDebounced
+    .split(' ')
+    .filter(
+      palabra =>
+        !STOPWORDS.includes(
+          palabra.toLowerCase()
+        )
+    )
+    .join(' ')
+
+  const search = encodeURIComponent(
+    `"${busquedaLimpia}"`
+  )
+
+  if (AUTH_REQUIRED && authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-amber-500/30 border-t-amber-500"></div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
-      {/* Header */}
-      <header className="border-b border-slate-700/50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* HEADER */}
+
+      <header className="sticky top-0 z-40 backdrop-blur-md bg-slate-900/70 border-b border-slate-700/50">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link
               href="/"
-              className="p-2 -ml-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
-              title="Volver al inicio"
+              className="text-slate-400 hover:text-white transition"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
+              ← Volver
             </Link>
+
             <div>
-              <h1 className="text-xl font-bold text-white">Casaciones del Poder Judicial</h1>
-              <p className="text-xs text-slate-400">Repositorio oficial del PJ</p>
+              <h1 className="text-2xl font-bold text-white">
+                Buscador de Sentencias
+              </h1>
+
+              <p className="text-sm text-slate-400">
+                OpenSearch + PDFs indexados
+              </p>
             </div>
           </div>
+
+          {AUTH_REQUIRED && <UserMenu />}
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="flex-1 flex items-center justify-center px-4">
-        <div className="text-center max-w-lg">
-          {/* Animated icon */}
-          <div className="relative w-32 h-32 mx-auto mb-8">
-            <div className="absolute inset-0 bg-blue-500/20 rounded-full animate-ping" />
-            <div className="relative w-32 h-32 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center">
-              <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-              </svg>
-            </div>
+      {/* MAIN */}
+
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        {/* FILTROS */}
+
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5 mb-6">
+          {/* BUSQUEDA */}
+
+          <div className="mb-5">
+            <input
+              type="text"
+              value={busqueda}
+              onChange={e =>
+                setBusqueda(e.target.value)
+              }
+              placeholder="Buscar casaciones..."
+              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white outline-none"
+            />
           </div>
 
-          <h2 className="text-3xl font-bold text-white mb-4">
-            En Construccion
-          </h2>
+          {/* TESAURO */}
 
-          <p className="text-slate-400 mb-8 leading-relaxed">
-            Estamos trabajando en la integracion con el repositorio oficial del Poder Judicial.
-            Pronto podras consultar casaciones adicionales desde esta fuente.
-          </p>
+          <div className="space-y-5">
+            {getTesaurioLevelsToRender().map(
+              level => {
+                const nodes =
+                  getNodesForLevel(level)
 
-          {/* Progress indicator */}
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 mb-8">
-            <div className="flex items-center justify-between text-sm mb-3">
-              <span className="text-slate-400">Progreso del desarrollo</span>
-              <span className="text-blue-400 font-medium">35%</span>
-            </div>
-            <div className="w-full bg-slate-700 rounded-full h-2">
-              <div className="bg-gradient-to-r from-blue-400 to-blue-600 h-2 rounded-full" style={{ width: '35%' }} />
-            </div>
+                if (!nodes.length) return null
+
+                return (
+                  <div
+                    key={`tesaurio-level-${level}`}
+                  >
+                    <h3 className="text-sm font-semibold text-slate-300 mb-3">
+                      {getTesaurioLevelTitle(
+                        level
+                      )}
+                    </h3>
+
+                    <div className="flex flex-wrap gap-2">
+                      {nodes.map(node => {
+                        const active =
+                          getSelectedValueForLevel(
+                            level
+                          ) === node.slug
+
+                        return (
+                          <button
+                            key={node.slug}
+                            onClick={() =>
+                              handleSelectTesaurioLevel(
+                                level,
+                                node.slug
+                              )
+                            }
+                            className={`
+                            px-3 py-2 rounded-xl text-sm transition
+                            ${active
+                                ? 'bg-amber-500 text-black font-semibold'
+                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                              }
+                          `}
+                          >
+                            {node.nombre} (
+                            {node.count})
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              }
+            )}
           </div>
 
-          {/* Features coming */}
-          <div className="grid grid-cols-2 gap-4 mb-8">
-            <div className="bg-slate-800/30 border border-slate-700/30 rounded-lg p-4">
-              <svg className="w-6 h-6 text-blue-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <div className="text-sm text-slate-300">Busqueda avanzada</div>
-            </div>
-            <div className="bg-slate-800/30 border border-slate-700/30 rounded-lg p-4">
-              <svg className="w-6 h-6 text-blue-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              <div className="text-sm text-slate-300">Descarga PDF</div>
-            </div>
-            <div className="bg-slate-800/30 border border-slate-700/30 rounded-lg p-4">
-              <svg className="w-6 h-6 text-blue-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-              </svg>
-              <div className="text-sm text-slate-300">Filtros multiples</div>
-            </div>
-            <div className="bg-slate-800/30 border border-slate-700/30 rounded-lg p-4">
-              <svg className="w-6 h-6 text-blue-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-              <div className="text-sm text-slate-300">Datos completos</div>
-            </div>
-          </div>
+          {/* BOTONES */}
 
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Volver al inicio
-          </Link>
+          <div className="flex gap-3 mt-6">
+            <button
+              onClick={handleBuscar}
+              className="px-5 py-3 rounded-xl bg-amber-500 text-black font-semibold hover:bg-amber-400 transition"
+            >
+              Buscar
+            </button>
+
+            <button
+              onClick={() => {
+                setBusqueda('')
+                setSelectedTesaurioPath([])
+              }}
+              className="px-5 py-3 rounded-xl bg-slate-700 text-white hover:bg-slate-600 transition"
+            >
+              Limpiar
+            </button>
+          </div>
         </div>
+
+        {/* INFO */}
+
+        <div className="flex items-center justify-between mb-6">
+          <div className="text-sm text-slate-400">
+            {cargando ? (
+              <span className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-amber-500/30 border-t-amber-500"></div>
+
+                Buscando...
+              </span>
+            ) : (
+              <>
+                <span className="text-white font-semibold">
+                  {total}
+                </span>{' '}
+                resultados encontrados
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* RESULTADOS */}
+
+        <div className="space-y-5">
+          {resultados.map(
+            (resultado, index) => {
+              const pdfViewerUrl =
+                `/api/proxy/pdfjs/web/viewer.html?file=` +
+                encodeURIComponent(
+                  `/api/proxy/pdf/TC/${resultado.nombre_archivo}`
+                ) +
+                `#page=${resultado.pagina}&search=${busqueda}`
+
+              return (
+                <div
+                  key={`${resultado.id}-${resultado.chunk}-${index}`}
+                  className="bg-slate-800/40 border border-slate-700/40 rounded-2xl overflow-hidden shadow-lg hover:border-amber-500/20 transition"
+                >
+                  {/* HEADER */}
+
+                  <div className="p-5 border-b border-slate-700/30">
+                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+
+                      {/* INFO */}
+                      <div className="flex-1 min-w-0">
+
+                        {/* TITULO */}
+                        <h2 className="text-white font-bold text-lg leading-7 break-words">
+                          {resultado.titulo}
+                        </h2>
+
+                        {/* META */}
+                        <div className="flex flex-wrap gap-2 mt-4">
+
+                          <span className="px-3 py-1 rounded-xl bg-slate-700/40 text-slate-300 text-xs">
+                            📄 Página {resultado.pagina}
+                          </span>
+
+                          <span className="px-3 py-1 rounded-xl bg-slate-700/40 text-slate-300 text-xs">
+                            🧩 Chunk {resultado.chunk}
+                          </span>
+
+                          <span className="px-3 py-1 rounded-xl bg-slate-700/40 text-slate-300 text-xs">
+                            📅 {resultado.mes} {resultado.anio}
+                          </span>
+
+                          <span className="px-3 py-1 rounded-xl bg-slate-700/40 text-slate-300 text-xs">
+                            🏛️ {resultado.fuente}
+                          </span>
+
+                          <span className="px-3 py-1 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold">
+                            ⭐ {resultado.score?.toFixed(2)}
+                          </span>
+
+                        </div>
+
+                        {/* RESUMEN */}
+                        <div className="mt-5">
+                          {resultado.highlight?.contenido?.[0] ? (
+                            <div
+                              className="text-sm leading-7 text-slate-300 bg-slate-900/30 border border-slate-700/20 rounded-xl p-4"
+
+                              dangerouslySetInnerHTML={{
+                                __html:
+                                  resultado.highlight
+                                    .contenido[0],
+                              }}
+                            />
+                          ) : (
+                            <div className="text-slate-500 text-sm">
+                              Sin preview disponible
+                            </div>
+                          )}
+                        </div>
+
+                      </div>
+
+                      {/* BOTONES */}
+                      <div className="flex lg:flex-col gap-3 shrink-0">
+
+                        <a
+                          href={pdfViewerUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-4 py-3 rounded-xl text-sm font-medium bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition text-center"
+                        >
+                          Ver PDF
+                        </a>
+
+                        <a
+                          href={`/api/proxy${resultado.url_pdf}`}
+                          download
+                          className="px-4 py-3 rounded-xl text-sm font-medium bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition text-center"
+                        >
+                          Descargar
+                        </a>
+
+                      </div>
+
+                    </div>
+                  </div>
+
+                  {/* HIGHLIGHTS EXTRA */}
+
+                  {resultado.highlight?.contenido &&
+                    resultado.highlight.contenido.length >
+                    1 && (
+                      <div className="px-5 pb-5 space-y-3">
+
+                        {resultado.highlight.contenido
+                          .slice(1)
+                          .map((texto, idx) => (
+                            <div
+                              key={idx}
+                              className="bg-slate-900/20 border border-slate-700/20 rounded-xl p-4 text-sm leading-7 text-slate-400"
+
+                              dangerouslySetInnerHTML={{
+                                __html: texto,
+                              }}
+                            />
+                          ))}
+
+                      </div>
+                    )}
+
+                </div>
+              )
+            }
+          )}
+        </div>
+
+        {/* VACIO */}
+
+        {!cargando &&
+          resultados.length === 0 && (
+            <div className="text-center py-20">
+              <div className="text-slate-500 text-lg">
+                No se encontraron resultados
+              </div>
+
+              <p className="text-slate-600 text-sm mt-2">
+                Intenta con otra búsqueda o
+                cambia los filtros
+              </p>
+            </div>
+          )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-700/50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <p className="text-center text-sm text-slate-500">
-            Sistema de consulta de jurisprudencia casatoria
-          </p>
-        </div>
-      </footer>
+      {/* MODALS */}
+
+      <ModalDetalle
+        casacionId={casacionSeleccionada}
+        onCerrar={() =>
+          setCasacionSeleccionada(null)
+        }
+      />
+
+      <ModalUpgrade
+        isOpen={showUpgradeModal}
+        onClose={() =>
+          setShowUpgradeModal(false)
+        }
+        consultasUsadas={0}
+        consultasMax={10}
+      />
     </div>
   )
 }

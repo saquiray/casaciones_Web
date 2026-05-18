@@ -105,8 +105,8 @@ export default function Home() {
             </div>
 
             <div className="absolute bottom-4 right-4">
-              <span className="px-3 py-1 bg-amber-500/20 text-amber-400 text-xs font-medium rounded-full">
-                En desarrollo
+              <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs font-medium rounded-full">
+                Disponible
               </span>
             </div>
           </Link>
