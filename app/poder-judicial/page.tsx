@@ -137,7 +137,7 @@ export default function ElPeruanoPage() {
     .join(' ')
 
   const search = encodeURIComponent(
-    `"${busquedaLimpia}"`
+    `${busquedaLimpia}`
   )
   
   if (AUTH_REQUIRED && authLoading) {
@@ -225,7 +225,7 @@ export default function ElPeruanoPage() {
         <div className="space-y-5">
 
           {resultados.map((resultado, index) => {
-
+            console.log('Resultado:', resultado.url_pdf) // Debug: Ver estructura de resultado
             const pdfViewerUrl =
               `/api/proxy/pdfjs/web/viewer.html?file=` +
               encodeURIComponent(
