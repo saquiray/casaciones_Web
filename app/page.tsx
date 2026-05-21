@@ -37,7 +37,7 @@ export default function Home() {
         <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
           {/* Card El Peruano */}
           <Link
-            href="/el-peruano"
+            href="/poder-judicial"
             className="group relative bg-slate-800/50 border border-slate-700/50 rounded-2xl p-8 hover:bg-slate-800 hover:border-slate-600 transition-all duration-300 hover:shadow-2xl hover:shadow-amber-500/10"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-500/20 to-transparent rounded-2xl" />
@@ -50,7 +50,7 @@ export default function Home() {
               </div>
 
               <h3 className="text-2xl font-bold text-white mb-3">
-                Diario El Peruano
+                 Poder Judicial
               </h3>
 
               <p className="text-slate-400 mb-6">
@@ -73,9 +73,9 @@ export default function Home() {
             </div>
           </Link>
 
-          {/* Card Poder Judicial */}
+          {/* Card Tribunal Constitucional*/}
           <Link
-            href="/poder-judicial"
+            href="/tribunal-constitucional"
             className="group relative bg-slate-800/50 border border-slate-700/50 rounded-2xl p-8 hover:bg-slate-800 hover:border-slate-600 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/20 to-transparent rounded-2xl" />
@@ -88,7 +88,7 @@ export default function Home() {
               </div>
 
               <h3 className="text-2xl font-bold text-white mb-3">
-                Poder Judicial
+               Tribunal Constitucional
               </h3>
 
               <p className="text-slate-400 mb-6">

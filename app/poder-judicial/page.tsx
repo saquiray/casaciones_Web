@@ -1,15 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-
+import FiltrosBar from '@/components/FiltrosBar'
 import UserMenu from '@/components/UserMenu'
 import ModalUpgrade from '@/components/ModalUpgrade'
 import ModalDetalle from '@/components/ModalDetalle'
-
 import { useAuth } from '@/components/AuthProvider'
-import { TESAURO_DATA } from '@/lib/tesauroData'
-
+import { FiltrosState } from '@/lib/types'
 const STOPWORDS = [
   'de',
   'la',
@@ -36,7 +34,7 @@ interface ResultadoBusqueda {
   chunk: number
   mes: string
   anio: string
-  nombre_archivo: string
+
   highlight?: {
     contenido?: string[]
   }
@@ -47,28 +45,20 @@ interface ApiBusquedaResponse {
   results: ResultadoBusqueda[]
 }
 
-interface TesaurioNode {
-  id: number
-  nombre: string
-  slug: string
-  code: string
-  count: number
-  children?: TesaurioNode[]
-}
-
 const AUTH_REQUIRED =
   process.env.NEXT_PUBLIC_ENABLE_PAYMENTS === 'true'
 
 export default function ElPeruanoPage() {
   const { user, loading: authLoading } = useAuth()
 
-  const [busqueda, setBusqueda] = useState('')
-  const [busquedaDebounced, setBusquedaDebounced] =
-    useState('')
-  const [mes, setMes] = useState('')
-  const [anio, setAnio] = useState(
-    new Date().getFullYear().toString()
-  )
+  const [filtros, setFiltros] = useState<FiltrosState>({
+    busqueda: '',
+    tipo: '',
+    anio: new Date().getFullYear().toString(),
+    mes: '',
+    fechaDesde: '',
+    fechaHasta: '',
+  })
 
   const [resultados, setResultados] = useState<
     ResultadoBusqueda[]
@@ -84,110 +74,6 @@ export default function ElPeruanoPage() {
   const [casacionSeleccionada, setCasacionSeleccionada] =
     useState<number | null>(null)
 
-  /**
-   * TESAURO
-   */
-
-  const [selectedTesaurioPath, setSelectedTesaurioPath] =
-    useState<TesaurioNode[]>([])
-
-  const selectedTesaurioSlug = useMemo(() => {
-    if (selectedTesaurioPath.length === 0) return ''
-
-    return selectedTesaurioPath[
-      selectedTesaurioPath.length - 1
-    ].slug
-  }, [selectedTesaurioPath])
-
-  const getNodesForLevel = (
-    level: number
-  ): TesaurioNode[] => {
-    if (level === 0) {
-      return TESAURO_DATA as TesaurioNode[]
-    }
-
-    const parent = selectedTesaurioPath[level - 1]
-
-    if (!parent?.children?.length) {
-      return []
-    }
-
-    return parent.children
-  }
-
-  const handleSelectTesaurioLevel = (
-    level: number,
-    slug: string
-  ) => {
-    if (!slug) {
-      setSelectedTesaurioPath(prev =>
-        prev.slice(0, level)
-      )
-
-      return
-    }
-
-    const nodes = getNodesForLevel(level)
-
-    const selectedNode = nodes.find(
-      node => node.slug === slug
-    )
-
-    if (!selectedNode) return
-
-    setSelectedTesaurioPath(prev => {
-      const newPath = prev.slice(0, level)
-
-      newPath[level] = selectedNode
-
-      return newPath
-    })
-  }
-
-  const getSelectedValueForLevel = (
-    level: number
-  ) => {
-    return selectedTesaurioPath[level]?.slug || ''
-  }
-
-  const getTesaurioLevelsToRender = () => {
-    const levels: number[] = [0]
-
-    selectedTesaurioPath.forEach(
-      (node, index) => {
-        if (node.children?.length) {
-          levels.push(index + 1)
-        }
-      }
-    )
-
-    return levels
-  }
-
-  const getTesaurioLevelTitle = (
-    level: number
-  ) => {
-    if (level === 0) return 'Materia'
-
-    if (level === 1) return 'Submateria'
-
-    if (level === 2) return 'Tema'
-
-    if (level === 3) return 'Subtema'
-
-    return `Nivel ${level + 1}`
-  }
-
-  /**
-   * BUSQUEDA
-   */
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setBusquedaDebounced(busqueda)
-    }, 500)
-
-    return () => clearTimeout(timeout)
-  }, [busqueda])
   const cargarResultados = useCallback(async () => {
     if (AUTH_REQUIRED && !user) return
 
@@ -196,19 +82,20 @@ export default function ElPeruanoPage() {
     try {
       const params = new URLSearchParams()
 
-      if (busquedaDebounced?.trim()) {
-        params.set('q', busquedaDebounced)
+      if (filtros.busqueda?.trim()) {
+        params.set('q', filtros.busqueda)
       }
 
-      if (selectedTesaurioSlug) {
-        params.set(
-          'tesaurio_slug',
-          selectedTesaurioSlug
-        )
+      if (filtros.mes) {
+        params.set('month', filtros.mes)
+      }
+
+      if (filtros.anio) {
+        params.set('year', filtros.anio)
       }
 
       const response = await fetch(
-        `/api/proxy/search/sentencias_nuevo?${params.toString()}`
+        `/api/proxy/search/casaciones_nuevo?${params.toString()}`
       )
 
       const data: ApiBusquedaResponse =
@@ -218,19 +105,12 @@ export default function ElPeruanoPage() {
       setTotal(data.total || 0)
     } catch (error) {
       console.error('Error buscando:', error)
-
       setResultados([])
       setTotal(0)
     } finally {
       setCargando(false)
     }
-  }, [
-    busquedaDebounced,
-    mes,
-    anio,
-    selectedTesaurioSlug,
-    user,
-  ])
+  }, [filtros, user])
 
   useEffect(() => {
     if (AUTH_REQUIRED) {
@@ -240,17 +120,13 @@ export default function ElPeruanoPage() {
     } else {
       cargarResultados()
     }
-  }, [
-    authLoading,
-    user,
-    cargarResultados,
-  ])
+  }, [authLoading, user, cargarResultados])
 
   const handleBuscar = () => {
     cargarResultados()
   }
 
-  const busquedaLimpia = busquedaDebounced
+  const busquedaLimpia = filtros.busqueda
     .split(' ')
     .filter(
       palabra =>
@@ -263,7 +139,7 @@ export default function ElPeruanoPage() {
   const search = encodeURIComponent(
     `"${busquedaLimpia}"`
   )
-
+  
   if (AUTH_REQUIRED && authLoading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
@@ -274,11 +150,13 @@ export default function ElPeruanoPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* HEADER */}
 
+      {/* HEADER */}
       <header className="sticky top-0 z-40 backdrop-blur-md bg-slate-900/70 border-b border-slate-700/50">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+
           <div className="flex items-center gap-4">
+
             <Link
               href="/"
               className="text-slate-400 hover:text-white transition"
@@ -288,7 +166,7 @@ export default function ElPeruanoPage() {
 
             <div>
               <h1 className="text-2xl font-bold text-white">
-                Buscador de Sentencias
+                Buscador de Casaciones
               </h1>
 
               <p className="text-sm text-slate-400">
@@ -302,106 +180,20 @@ export default function ElPeruanoPage() {
       </header>
 
       {/* MAIN */}
-
       <main className="max-w-7xl mx-auto px-4 py-6">
+
         {/* FILTROS */}
-
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5 mb-6">
-          {/* BUSQUEDA */}
-
-          <div className="mb-5">
-            <input
-              type="text"
-              value={busqueda}
-              onChange={e =>
-                setBusqueda(e.target.value)
-              }
-              placeholder="Buscar casaciones..."
-              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white outline-none"
-            />
-          </div>
-
-          {/* TESAURO */}
-
-          <div className="space-y-5">
-            {getTesaurioLevelsToRender().map(
-              level => {
-                const nodes =
-                  getNodesForLevel(level)
-
-                if (!nodes.length) return null
-
-                return (
-                  <div
-                    key={`tesaurio-level-${level}`}
-                  >
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">
-                      {getTesaurioLevelTitle(
-                        level
-                      )}
-                    </h3>
-
-                    <div className="flex flex-wrap gap-2">
-                      {nodes.map(node => {
-                        const active =
-                          getSelectedValueForLevel(
-                            level
-                          ) === node.slug
-
-                        return (
-                          <button
-                            key={node.slug}
-                            onClick={() =>
-                              handleSelectTesaurioLevel(
-                                level,
-                                node.slug
-                              )
-                            }
-                            className={`
-                            px-3 py-2 rounded-xl text-sm transition
-                            ${active
-                                ? 'bg-amber-500 text-black font-semibold'
-                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                              }
-                          `}
-                          >
-                            {node.nombre} (
-                            {node.count})
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              }
-            )}
-          </div>
-
-          {/* BOTONES */}
-
-          <div className="flex gap-3 mt-6">
-            <button
-              onClick={handleBuscar}
-              className="px-5 py-3 rounded-xl bg-amber-500 text-black font-semibold hover:bg-amber-400 transition"
-            >
-              Buscar
-            </button>
-
-            <button
-              onClick={() => {
-                setBusqueda('')
-                setSelectedTesaurioPath([])
-              }}
-              className="px-5 py-3 rounded-xl bg-slate-700 text-white hover:bg-slate-600 transition"
-            >
-              Limpiar
-            </button>
-          </div>
+          <FiltrosBar
+            filtros={filtros}
+            onChange={setFiltros}
+            onBuscar={handleBuscar}
+          />
         </div>
 
         {/* INFO */}
-
         <div className="flex items-center justify-between mb-6">
+
           <div className="text-sm text-slate-400">
             {cargando ? (
               <span className="flex items-center gap-2">
@@ -418,169 +210,155 @@ export default function ElPeruanoPage() {
               </>
             )}
           </div>
+
+          {filtros.busqueda && (
+            <div className="text-xs text-slate-500">
+              búsqueda:{' '}
+              <span className="text-amber-400">
+                {filtros.busqueda}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* RESULTADOS */}
-
         <div className="space-y-5">
-          {resultados.map(
-            (resultado, index) => {
-              const pdfViewerUrl =
-                `/api/proxy/pdfjs/web/viewer.html?file=` +
-                encodeURIComponent(
-                  `/api/proxy/pdf/TC/${resultado.nombre_archivo}`
-                ) +
-                `#page=${resultado.pagina}&search=${busqueda}`
 
-              return (
-                <div
-                  key={`${resultado.id}-${resultado.chunk}-${index}`}
-                  className="bg-slate-800/40 border border-slate-700/40 rounded-2xl overflow-hidden shadow-lg hover:border-amber-500/20 transition"
-                >
-                  {/* HEADER */}
+          {resultados.map((resultado, index) => {
 
-                  <div className="p-5 border-b border-slate-700/30">
-                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+            const pdfViewerUrl =
+              `/api/proxy/pdfjs/web/viewer.html?file=` +
+              encodeURIComponent(
+                `/api/proxy${resultado.url_pdf}`
+              ) +
+              `#page=${resultado.pagina}&search=${search}`
 
-                      {/* INFO */}
-                      <div className="flex-1 min-w-0">
+            return (
+              <div
+                key={`${resultado.id}-${resultado.chunk}-${index}`}
+                className="bg-slate-800/40 border border-slate-700/40 rounded-2xl overflow-hidden shadow-lg"
+              >
 
-                        {/* TITULO */}
-                        <h2 className="text-white font-bold text-lg leading-7 break-words">
-                          {resultado.titulo}
-                        </h2>
+                {/* TOP */}
+                <div className="p-5 border-b border-slate-700/30">
 
-                        {/* META */}
-                        <div className="flex flex-wrap gap-2 mt-4">
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
 
-                          <span className="px-3 py-1 rounded-xl bg-slate-700/40 text-slate-300 text-xs">
-                            📄 Página {resultado.pagina}
-                          </span>
+                    <div className="flex-1">
 
-                          <span className="px-3 py-1 rounded-xl bg-slate-700/40 text-slate-300 text-xs">
-                            🧩 Chunk {resultado.chunk}
-                          </span>
+                      <h2 className="text-white font-bold text-lg break-all">
+                        {resultado.titulo}
+                      </h2>
 
-                          <span className="px-3 py-1 rounded-xl bg-slate-700/40 text-slate-300 text-xs">
-                            📅 {resultado.mes} {resultado.anio}
-                          </span>
+                      <div className="flex flex-wrap gap-3 mt-3 text-xs">
 
-                          <span className="px-3 py-1 rounded-xl bg-slate-700/40 text-slate-300 text-xs">
-                            🏛️ {resultado.fuente}
-                          </span>
+                        <span className="px-2 py-1 rounded-lg bg-slate-700/50 text-slate-300">
+                          📄 Página {resultado.pagina}
+                        </span>
 
-                          <span className="px-3 py-1 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold">
-                            ⭐ {resultado.score?.toFixed(2)}
-                          </span>
+                        <span className="px-2 py-1 rounded-lg bg-slate-700/50 text-slate-300">
+                          🧩 Chunk {resultado.chunk}
+                        </span>
 
-                        </div>
+                        <span className="px-2 py-1 rounded-lg bg-slate-700/50 text-slate-300">
+                          📅 {resultado.mes} {resultado.anio}
+                        </span>
 
-                        {/* RESUMEN */}
-                        <div className="mt-5">
-                          {resultado.highlight?.contenido?.[0] ? (
-                            <div
-                              className="text-sm leading-7 text-slate-300 bg-slate-900/30 border border-slate-700/20 rounded-xl p-4"
-
-                              dangerouslySetInnerHTML={{
-                                __html:
-                                  resultado.highlight
-                                    .contenido[0],
-                              }}
-                            />
-                          ) : (
-                            <div className="text-slate-500 text-sm">
-                              Sin preview disponible
-                            </div>
-                          )}
-                        </div>
+                        <span className="px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 font-semibold">
+                          ⭐ {resultado.score?.toFixed(2)}
+                        </span>
 
                       </div>
+                    </div>
 
-                      {/* BOTONES */}
-                      <div className="flex lg:flex-col gap-3 shrink-0">
+                    {/* BOTONES */}
+                    <div className="flex items-center gap-3">
 
-                        <a
-                          href={pdfViewerUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-4 py-3 rounded-xl text-sm font-medium bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition text-center"
-                        >
-                          Ver PDF
-                        </a>
+                      {/* VER PDF */}
+                      <a
+                        href={pdfViewerUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 rounded-xl text-sm font-medium bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition"
+                      >
+                        Ver PDF
+                      </a>
 
-                        <a
-                          href={`/api/proxy${resultado.url_pdf}`}
-                          download
-                          className="px-4 py-3 rounded-xl text-sm font-medium bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition text-center"
-                        >
-                          Descargar
-                        </a>
-
-                      </div>
+                      {/* DESCARGAR */}
+                      <a
+                        href={`/api/proxy${resultado.url_pdf}`}
+                        download
+                        className="px-4 py-2 rounded-xl text-sm font-medium bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition"
+                      >
+                        Descargar
+                      </a>
 
                     </div>
+
                   </div>
+                </div>
 
-                  {/* HIGHLIGHTS EXTRA */}
+                {/* HIGHLIGHTS */}
+                <div className="p-5 space-y-4">
 
-                  {resultado.highlight?.contenido &&
-                    resultado.highlight.contenido.length >
-                    1 && (
-                      <div className="px-5 pb-5 space-y-3">
+                  {resultado.highlight?.contenido?.length ? (
 
-                        {resultado.highlight.contenido
-                          .slice(1)
-                          .map((texto, idx) => (
-                            <div
-                              key={idx}
-                              className="bg-slate-900/20 border border-slate-700/20 rounded-xl p-4 text-sm leading-7 text-slate-400"
+                    resultado.highlight.contenido.map(
+                      (texto, idx) => (
 
-                              dangerouslySetInnerHTML={{
-                                __html: texto,
-                              }}
-                            />
-                          ))}
+                        <div
+                          key={idx}
+                          className="bg-slate-900/40 border border-slate-700/30 rounded-xl p-4 text-sm leading-7 text-slate-300"
 
-                      </div>
-                    )}
+                          dangerouslySetInnerHTML={{
+                            __html: texto,
+                          }}
+                        />
+
+                      )
+                    )
+
+                  ) : (
+
+                    <div className="text-slate-500 text-sm">
+                      Sin preview disponible
+                    </div>
+
+                  )}
 
                 </div>
-              )
-            }
-          )}
+
+              </div>
+            )
+          })}
         </div>
 
         {/* VACIO */}
+        {!cargando && resultados.length === 0 && (
+          <div className="text-center py-20">
 
-        {!cargando &&
-          resultados.length === 0 && (
-            <div className="text-center py-20">
-              <div className="text-slate-500 text-lg">
-                No se encontraron resultados
-              </div>
-
-              <p className="text-slate-600 text-sm mt-2">
-                Intenta con otra búsqueda o
-                cambia los filtros
-              </p>
+            <div className="text-slate-500 text-lg">
+              No se encontraron resultados
             </div>
-          )}
+
+            <p className="text-slate-600 text-sm mt-2">
+              Intenta con otra búsqueda o cambia los filtros
+            </p>
+
+          </div>
+        )}
+
       </main>
 
       {/* MODALS */}
-
       <ModalDetalle
         casacionId={casacionSeleccionada}
-        onCerrar={() =>
-          setCasacionSeleccionada(null)
-        }
+        onCerrar={() => setCasacionSeleccionada(null)}
       />
 
       <ModalUpgrade
         isOpen={showUpgradeModal}
-        onClose={() =>
-          setShowUpgradeModal(false)
-        }
+        onClose={() => setShowUpgradeModal(false)}
         consultasUsadas={0}
         consultasMax={10}
       />
