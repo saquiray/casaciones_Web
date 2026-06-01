@@ -166,7 +166,7 @@ export default function ElPeruanoPage() {
             </Link>
             <div>
               <h1 className="text-2xl font-bold text-white">
-                Tribunal Constitucional
+                Poder Judicial
               </h1>
               <p className="text-sm text-slate-400">
                 Buscador de resoluciones y sentencias
