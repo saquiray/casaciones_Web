@@ -40,7 +40,9 @@ export async function searchResolutions(
 
   const response = await fetch(targetUrl, { cache: 'no-store' });
   if (!response.ok) {
-    throw new Error(`Failed to fetch resolutions search: ${response.statusText}`);
+    throw new Error(
+      `Failed to fetch resolutions search from ${targetUrl}: ${response.status} ${response.statusText}`
+    );
   }
 
   const html = await response.text();
