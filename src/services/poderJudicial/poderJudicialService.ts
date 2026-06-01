@@ -6,8 +6,21 @@ import {
 } from '../../interfaces/poderJudicial';
 import { parsePoderJudicialHtml } from '../../utils/parsers/poderJudicialParser';
 
-const TC_SEARCH_URL = 'http://181.177.234.6/buscarRes/public/resolucionjur';
-const TC_OPENURL_BASE = 'http://181.177.234.6/buscarRes/public/openurl';
+const PODER_JUDICIAL_BASE_URL =
+  process.env.PODER_JUDICIAL_BASE_URL || 'http://181.177.234.6';
+
+const TC_SEARCH_PATH = '/buscarRes/public/resolucionjur';
+const TC_OPENURL_PATH = '/buscarRes/public/openurl';
+
+function buildPoderJudicialUrl(path: string, searchParams?: URLSearchParams) {
+  const url = new URL(path, PODER_JUDICIAL_BASE_URL);
+
+  if (searchParams) {
+    url.search = searchParams.toString();
+  }
+
+  return url.toString();
+}
 
 export async function searchResolutions(
   params: PoderJudicialSearchParams
@@ -23,9 +36,9 @@ export async function searchResolutions(
   queryParams.set('anopublica', params.anopublica || '');
   queryParams.set('pg', String(params.pg || 1));
 
-  const targetUrl = `${TC_SEARCH_URL}?${queryParams.toString()}`;
+  const targetUrl = buildPoderJudicialUrl(TC_SEARCH_PATH, queryParams);
 
-  const response = await fetch(targetUrl);
+  const response = await fetch(targetUrl, { cache: 'no-store' });
   if (!response.ok) {
     throw new Error(`Failed to fetch resolutions search: ${response.statusText}`);
   }
@@ -39,8 +52,10 @@ export async function searchResolutions(
       let pdfUrl = '';
       if (res.ano && res.archivo) {
         try {
-          const openUrl = `${TC_OPENURL_BASE}/${res.ano}/${res.archivo}`;
-          const openRes = await fetch(openUrl);
+          const openUrl = buildPoderJudicialUrl(
+            `${TC_OPENURL_PATH}/${res.ano}/${res.archivo}`
+          );
+          const openRes = await fetch(openUrl, { cache: 'no-store' });
           if (openRes.ok) {
             const data: PoderJudicialPdfResponse = await openRes.json();
             if (data.existe === 'SI' && data.archivo) {
