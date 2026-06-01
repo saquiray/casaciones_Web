@@ -30,8 +30,16 @@ export default function ModalDetalle({ casacionId, onCerrar }: ModalDetalleProps
   }, [])
 
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+
     if (casacionId) {
-      cargarCasacion(casacionId)
+      timeoutId = setTimeout(() => {
+        void cargarCasacion(casacionId)
+      }, 0)
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId)
     }
   }, [casacionId, cargarCasacion])
 

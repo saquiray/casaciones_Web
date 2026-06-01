@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import UserMenu from '@/components/UserMenu'
 import ModalUpgrade from '@/components/ModalUpgrade'
@@ -36,6 +36,7 @@ const YEARS = Array.from({ length: new Date().getFullYear() - 1989 }, (_, i) => 
 export default function ElPeruanoPage() {
   const { user, loading: authLoading } = useAuth()
   const { params, results, pagination, loading, error, search } = usePoderJudicialSearch()
+  const hasInitializedSearch = useRef(false)
 
   const [filtro, setFiltro] = useState<'S' | 'A' | 'F'>('S')
   const [searchTerm, setSearchTerm] = useState('')
@@ -49,7 +50,25 @@ export default function ElPeruanoPage() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
   useEffect(() => {
-    const initSearch = () => {
+    if (hasInitializedSearch.current) return
+
+    if (AUTH_REQUIRED) {
+      if (!authLoading && user) {
+        hasInitializedSearch.current = true
+        search({
+          filtro,
+          search: searchTerm,
+          demandante,
+          demandado,
+          numexpediente,
+          anoingreso,
+          idtipoproceso,
+          anopublica,
+          pg: 1,
+        })
+      }
+    } else {
+      hasInitializedSearch.current = true
       search({
         filtro,
         search: searchTerm,
@@ -62,15 +81,19 @@ export default function ElPeruanoPage() {
         pg: 1,
       })
     }
-
-    if (AUTH_REQUIRED) {
-      if (!authLoading && user) {
-        initSearch()
-      }
-    } else {
-      initSearch()
-    }
-  }, [authLoading, user])
+  }, [
+    authLoading,
+    user,
+    search,
+    filtro,
+    searchTerm,
+    demandante,
+    demandado,
+    numexpediente,
+    anoingreso,
+    idtipoproceso,
+    anopublica,
+  ])
 
   const handleBuscar = (e?: React.FormEvent) => {
     if (e) e.preventDefault()
