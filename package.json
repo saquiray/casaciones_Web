@@ -13,6 +13,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.10.0",
     "@supabase/supabase-js": "^2.99.1",
+    "cheerio": "^1.2.0",
     "jspdf": "^4.2.0",
     "next": "^15.5.12",
     "react": "^18.3.1",
@@ -27,5 +28,6 @@
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "packageManager": "pnpm@11.5.0+sha256.a282871708f87a47b9cd72182dfdf9ee251c69100b8bac862a3d4f5e2145d8ff"
 }

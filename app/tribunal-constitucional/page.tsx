@@ -10,22 +10,6 @@ import ModalDetalle from '@/components/ModalDetalle'
 import { useAuth } from '@/components/AuthProvider'
 import { TESAURO_DATA } from '@/lib/tesauroData'
 
-const STOPWORDS = [
-  'de',
-  'la',
-  'el',
-  'los',
-  'las',
-  'y',
-  'o',
-  'en',
-  'del',
-  'al',
-  'por',
-  'para',
-  'con',
-]
-
 interface ResultadoBusqueda {
   id: string
   score: number
@@ -65,10 +49,6 @@ export default function ElPeruanoPage() {
   const [busqueda, setBusqueda] = useState('')
   const [busquedaDebounced, setBusquedaDebounced] =
     useState('')
-  const [mes, setMes] = useState('')
-  const [anio, setAnio] = useState(
-    new Date().getFullYear().toString()
-  )
 
   const [resultados, setResultados] = useState<
     ResultadoBusqueda[]
@@ -226,19 +206,27 @@ export default function ElPeruanoPage() {
     }
   }, [
     busquedaDebounced,
-    mes,
-    anio,
     selectedTesaurioSlug,
     user,
   ])
 
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+
     if (AUTH_REQUIRED) {
       if (!authLoading && user) {
-        cargarResultados()
+        timeoutId = setTimeout(() => {
+          void cargarResultados()
+        }, 0)
       }
     } else {
-      cargarResultados()
+      timeoutId = setTimeout(() => {
+        void cargarResultados()
+      }, 0)
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId)
     }
   }, [
     authLoading,
@@ -249,20 +237,6 @@ export default function ElPeruanoPage() {
   const handleBuscar = () => {
     cargarResultados()
   }
-
-  const busquedaLimpia = busquedaDebounced
-    .split(' ')
-    .filter(
-      palabra =>
-        !STOPWORDS.includes(
-          palabra.toLowerCase()
-        )
-    )
-    .join(' ')
-
-  const search = encodeURIComponent(
-    `"${busquedaLimpia}"`
-  )
 
   if (AUTH_REQUIRED && authLoading) {
     return (
