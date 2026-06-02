@@ -420,7 +420,7 @@ export default function ElPeruanoPage() {
         {/* ERROR STATE */}
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl mb-6 text-sm">
-            ⚠️ {error}
+             {error}
           </div>
         )}
 

@@ -5,6 +5,10 @@ import { PoderJudicialSearchParams } from '@/src/interfaces/poderJudicial';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// Netlify serverless functions have a 10s default timeout.
+// Our service already handles timeouts internally and returns
+// graceful fallbacks, so this route should almost never 500.
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -34,10 +38,30 @@ export async function GET(request: NextRequest) {
     const data = await searchResolutions(params);
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error in Poder Judicial proxy API:', error);
+    // Last-resort catch — the service should never throw, but if something
+    // truly unexpected happens, return a valid empty response with a warning
+    // header instead of a 500 that breaks the frontend.
+    console.error(
+      '[API /poder-judicial/search] Unhandled error:',
+      error instanceof Error ? error.stack : error
+    );
+
     return NextResponse.json(
-      { error: 'Internal Server Error', details: (error as Error).message },
-      { status: 500 }
+      {
+        results: [],
+        pagination: {
+          paginaActual: 1,
+          totalPaginas: 1,
+          paginas: [1],
+        },
+        _warning: 'El servicio externo no está disponible. Intente nuevamente.',
+      },
+      {
+        status: 200,
+        headers: {
+          'X-Fallback': 'true',
+        },
+      }
     );
   }
 }
