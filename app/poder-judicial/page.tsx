@@ -34,9 +34,10 @@ interface ResultadoBusqueda {
   chunk: number
   mes: string
   anio: string
-
+  pages: number[]
   highlight?: {
     contenido?: string[]
+    content?: string[]
   }
 }
 
@@ -95,7 +96,7 @@ export default function ElPeruanoPage() {
       }
 
       const response = await fetch(
-        `/api/proxy/search/casaciones_nuevo?${params.toString()}`
+        `/api/proxy/search/casaciones_separado?${params.toString()}`
       )
 
       const data: ApiBusquedaResponse =
@@ -139,7 +140,7 @@ export default function ElPeruanoPage() {
   const search = encodeURIComponent(
     `${busquedaLimpia}`
   )
-  
+
   if (AUTH_REQUIRED && authLoading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
@@ -175,7 +176,20 @@ export default function ElPeruanoPage() {
             </div>
           </div>
 
-          {AUTH_REQUIRED && <UserMenu />}
+          <nav className="hidden md:flex items-center gap-12 text-sm text-slate-300">
+           <Link
+              href="/poder-judicial"
+              className="hover:text-white transition"
+            >
+              Poder Judicial
+            </Link>
+            <Link
+              href="/tribunal-constitucional"
+              className="hover:text-white transition"
+            >
+              Tribunal Constitucional
+            </Link>
+          </nav>
         </div>
       </header>
 
@@ -231,8 +245,8 @@ export default function ElPeruanoPage() {
               encodeURIComponent(
                 `/api/proxy${resultado.url_pdf}`
               ) +
-              `#page=${resultado.pagina}&search=${search}`
-
+              `#page=${resultado.pages[0]}&search=${search}`
+              console.log(resultado)
             return (
               <div
                 key={`${resultado.id}-${resultado.chunk}-${index}`}
@@ -301,9 +315,9 @@ export default function ElPeruanoPage() {
                 {/* HIGHLIGHTS */}
                 <div className="p-5 space-y-4">
 
-                  {resultado.highlight?.contenido?.length ? (
+                  {resultado.highlight?.content?.length ? (
 
-                    resultado.highlight.contenido.map(
+                    resultado.highlight.content.map(
                       (texto, idx) => (
 
                         <div

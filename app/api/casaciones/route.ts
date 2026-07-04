@@ -114,8 +114,8 @@ export async function GET(
     // 🔥 endpoint dinámico
     const endpoint =
       origen === 'sentencias'
-        ? 'searchsentencias'
-        : 'search/casaciones_nuevo'
+        ? 'search/sentencias'
+        : '/search/casaciones_separado'
 
     console.log(
       'Consulta API:',

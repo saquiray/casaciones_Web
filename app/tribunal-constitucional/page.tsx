@@ -296,7 +296,20 @@ export default function ElPeruanoPage() {
               </p>
             </div>
           </div>
-
+          <nav className="hidden md:flex items-center gap-12 text-sm text-slate-300">
+            <Link
+              href="/poder-judicial"
+              className="hover:text-white transition"
+            >
+              Poder Judicial
+            </Link>
+            <Link
+              href="/tribunal-constitucional"
+              className="hover:text-white transition"
+            >
+              Tribunal Constitucional
+            </Link>
+          </nav>
           {AUTH_REQUIRED && <UserMenu />}
         </div>
       </header>

@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     const q = searchParams.get("q")
     const year = searchParams.get("year")
 
-    const url = `${API_BASE_URL}/search/casaciones_nuevo?q=${q}&year=${year}`
+    const url = `${API_BASE_URL}/search/casaciones_separado?q=${q}&year=${year}`
 
     const res = await fetch(url)
 
