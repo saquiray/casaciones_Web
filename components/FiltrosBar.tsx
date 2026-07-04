@@ -76,7 +76,7 @@ export default function FiltrosBar({ filtros, onChange, onBuscar }: FiltrosBarPr
           </div>
         </div>
 
-        {/* Ano */}
+        {/* Ano 
         <div>
           <label className={labelClass}>
             Ano
@@ -94,7 +94,7 @@ export default function FiltrosBar({ filtros, onChange, onBuscar }: FiltrosBarPr
           </select>
         </div>
 
-        {/* Mes */}
+        {/* Mes 
         <div>
           <label className={labelClass}>
             Mes
@@ -111,7 +111,7 @@ export default function FiltrosBar({ filtros, onChange, onBuscar }: FiltrosBarPr
             ))}
           </select>
         </div>
-
+*/}
         {/* Boton buscar */}
         <div className="flex items-end">
           <button

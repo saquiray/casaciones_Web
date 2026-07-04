@@ -55,7 +55,7 @@ export default function ElPeruanoPage() {
   const [filtros, setFiltros] = useState<FiltrosState>({
     busqueda: '',
     tipo: '',
-    anio: new Date().getFullYear().toString(),
+    anio: '',
     mes: '',
     fechaDesde: '',
     fechaHasta: '',
