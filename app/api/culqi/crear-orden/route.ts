@@ -14,22 +14,24 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { planId, metodo, email, nombre } = body
+    const { itemId, planId, metodo, email, nombre, tipo = 'plan' } = body
+    const id = itemId || planId
 
-    if (!planId || !metodo) {
+    if (!id || !metodo) {
       return NextResponse.json({ error: 'Faltan parametros' }, { status: 400 })
     }
 
-    // Obtener plan
+    // Obtener plan o paquete de creditos segun el tipo de compra
+    const tabla = tipo === 'creditos' ? 'paquetes_creditos' : 'planes'
     const { data: plan } = await supabase
-      .from('planes')
+      .from(tabla)
       .select('*')
-      .eq('id', planId)
+      .eq('id', id)
       .eq('activo', true)
       .single()
 
     if (!plan) {
-      return NextResponse.json({ error: 'Plan no encontrado' }, { status: 404 })
+      return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 })
     }
 
     // Separar nombre en partes
@@ -41,10 +43,14 @@ export async function POST(request: NextRequest) {
     const orderNumber = `ORD-${user.id.substring(0, 8)}-${Date.now()}`
     const expiration = Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 horas
 
+    const descripcion = tipo === 'creditos'
+      ? `Paquete de creditos ${plan.nombre} - Casaciones Web`
+      : `Suscripcion plan ${plan.nombre} - Casaciones Web`
+
     const orden = await crearOrden({
       amount: solesToCentimos(plan.precio),
       currency_code: 'PEN',
-      description: `Suscripcion plan ${plan.nombre} - Casaciones Web`,
+      description: descripcion,
       order_number: orderNumber,
       client_details: {
         first_name: firstName,
@@ -64,6 +70,9 @@ export async function POST(request: NextRequest) {
       estado: 'pendiente',
       metodo_pago: metodo,
       culqi_charge_id: orden.id,
+      tipo,
+      referencia_id: id,
+      creditos_otorgados: tipo === 'creditos' ? plan.creditos : null,
     })
 
     return NextResponse.json({

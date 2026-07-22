@@ -1,21 +1,63 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/components/AuthProvider'
+import { createClient } from '@/lib/supabase-browser'
+import { CreditosHistorial } from '@/lib/types'
 
 const PAYMENTS_ENABLED = process.env.NEXT_PUBLIC_ENABLE_PAYMENTS === 'true'
 
 export default function CuentaPage() {
   const router = useRouter()
-  const { user, perfil, loading } = useAuth()
+  const { user, perfil, loading, refreshPerfil } = useAuth()
+
+  const [editando, setEditando] = useState(false)
+  const [nombreEditado, setNombreEditado] = useState(
+  () => perfil?.nombre ?? ''
+)
+  const [guardando, setGuardando] = useState(false)
+
+  const [historial, setHistorial] = useState<CreditosHistorial[]>([])
+  const [cargandoHistorial, setCargandoHistorial] = useState(true)
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/auth/login')
     }
   }, [loading, user, router])
+
+  useEffect(() => {
+    const cargarHistorial = async () => {
+      if (!user || !PAYMENTS_ENABLED) {
+        setCargandoHistorial(false)
+        return
+      }
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('creditos_historial')
+        .select('*')
+        .eq('perfil_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10)
+
+      if (data) setHistorial(data)
+      setCargandoHistorial(false)
+    }
+
+    cargarHistorial()
+  }, [user])
+
+  const guardarNombre = async () => {
+    if (!user) return
+    setGuardando(true)
+    const supabase = createClient()
+    await supabase.from('perfiles').update({ nombre: nombreEditado }).eq('id', user.id)
+    await refreshPerfil()
+    setGuardando(false)
+    setEditando(false)
+  }
 
   if (loading) {
     return (
@@ -36,10 +78,10 @@ export default function CuentaPage() {
                     perfil.plan_id === 'basico' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
                     'bg-slate-500/20 text-slate-400 border-slate-500/30'
 
-  const consultasMax = perfil.plan_id === 'profesional' ? -1 :
-                       perfil.plan_id === 'basico' ? 100 : 10
+  const consultasMax = perfil.creditos
 
   const porcentajeUso = consultasMax === -1 ? 0 : (perfil.consultas_usadas / consultasMax) * 100
+  const creditos = perfil.creditos ?? 0
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -48,7 +90,7 @@ export default function CuentaPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center gap-4">
             <Link
-              href="/el-peruano"
+              href="/poder-judicial"
               className="p-2 -ml-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -57,7 +99,7 @@ export default function CuentaPage() {
             </Link>
             <div>
               <h1 className="text-xl font-bold text-white">Mi Cuenta</h1>
-              <p className="text-xs text-slate-400">Gestiona tu perfil y suscripcion</p>
+              <p className="text-xs text-slate-400">Gestiona tu perfil, plan y creditos</p>
             </div>
           </div>
         </div>
@@ -72,10 +114,45 @@ export default function CuentaPage() {
 
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center text-white font-bold text-2xl">
-                {perfil.nombre?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
+                {(nombreEditado || perfil.nombre)?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
               </div>
-              <div>
-                <p className="text-lg font-semibold text-white">{perfil.nombre || 'Usuario'}</p>
+              <div className="flex-1">
+                {editando ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={nombreEditado}
+                      onChange={(e) => setNombreEditado(e.target.value)}
+                      className="px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                    />
+                    <button
+                      onClick={guardarNombre}
+                      disabled={guardando}
+                      className="px-3 py-2 text-sm font-medium text-black bg-amber-400 rounded-lg hover:bg-amber-300 transition disabled:opacity-50"
+                    >
+                      {guardando ? '...' : 'Guardar'}
+                    </button>
+                    <button
+                      onClick={() => { setEditando(false); setNombreEditado(perfil.nombre || '') }}
+                      className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-white transition"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <p className="text-lg font-semibold text-white">{perfil.nombre || 'Usuario'}</p>
+                    <button
+                      onClick={() => setEditando(true)}
+                      className="text-slate-400 hover:text-white transition"
+                      title="Editar nombre"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
                 <p className="text-sm text-slate-400">{user.email}</p>
               </div>
             </div>
@@ -128,13 +205,55 @@ export default function CuentaPage() {
             )}
           </div>
 
+          {/* Creditos */}
+          {PAYMENTS_ENABLED && (
+            <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white">Creditos</h2>
+                <span className="px-3 py-1 text-sm font-medium rounded-full border bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                  {creditos} disponibles
+                </span>
+              </div>
+
+              <p className="text-sm text-slate-400 mb-4">
+                Los creditos se usan automaticamente cuando agotas las consultas
+                gratuitas de tu plan y no caducan.
+              </p>
+
+              <Link
+                href="/precios#creditos"
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg hover:from-emerald-400 hover:to-emerald-500 transition-all shadow-lg shadow-emerald-500/25"
+              >
+                Comprar mas creditos
+              </Link>
+
+              {!cargandoHistorial && historial.length > 0 && (
+                <div className="mt-6 pt-6 border-t border-slate-700/50">
+                  <h3 className="text-sm font-medium text-slate-300 mb-3">Movimientos recientes</h3>
+                  <div className="space-y-2">
+                    {historial.map((h) => (
+                      <div key={h.id} className="flex items-center justify-between text-sm">
+                        <span className="text-slate-400">
+                          {h.descripcion || (h.tipo === 'compra' ? 'Compra de creditos' : 'Consumo')}
+                        </span>
+                        <span className={h.cantidad > 0 ? 'text-emerald-400' : 'text-slate-400'}>
+                          {h.cantidad > 0 ? '+' : ''}{h.cantidad}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Acciones rapidas */}
           <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6">
             <h2 className="text-lg font-semibold text-white mb-4">Acciones rapidas</h2>
 
             <div className="grid sm:grid-cols-2 gap-3">
               <Link
-                href="/el-peruano"
+                href="/poder-judicial"
                 className="flex items-center gap-3 p-4 bg-slate-700/30 border border-slate-600/30 rounded-xl hover:bg-slate-700/50 transition-colors"
               >
                 <div className="w-10 h-10 bg-amber-500/20 rounded-lg flex items-center justify-center">

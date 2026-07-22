@@ -45,12 +45,12 @@ interface ApiBusquedaResponse {
   total: number
   results: ResultadoBusqueda[]
 }
-
 const AUTH_REQUIRED =
   process.env.NEXT_PUBLIC_ENABLE_PAYMENTS === 'true'
 
 export default function ElPeruanoPage() {
   const { user, loading: authLoading } = useAuth()
+  const [buscando, setBuscando] = useState(false);
 
   const [filtros, setFiltros] = useState<FiltrosState>({
     busqueda: '',
@@ -113,18 +113,49 @@ export default function ElPeruanoPage() {
     }
   }, [filtros, user])
 
-  useEffect(() => {
-    if (AUTH_REQUIRED) {
-      if (!authLoading && user) {
-        cargarResultados()
-      }
-    } else {
-      cargarResultados()
-    }
-  }, [authLoading, user, cargarResultados])
+  const gastarCredito = async () => {
+    if (!AUTH_REQUIRED || !user) return
 
-  const handleBuscar = () => {
-    cargarResultados()
+    try {
+      const response = await fetch('/api/creditos/gastar', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+
+        if (response.status === 402) {
+          // Sin créditos
+          setShowUpgradeModal(true)
+          throw new Error('No tienes créditos disponibles')
+        }
+
+        throw new Error(error.error || 'Error consumiendo crédito')
+      }
+
+      const data = await response.json()
+      console.log('Crédito consumido:', data)
+    } catch (error) {
+      console.error(error)
+      throw error
+    }
+  }
+  const handleBuscar = async () => {
+    if (buscando) return
+
+    setBuscando(true)
+
+    try {
+      await gastarCredito()
+      await cargarResultados()
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setBuscando(false)
+    }
   }
 
   const busquedaLimpia = filtros.busqueda
@@ -177,7 +208,7 @@ export default function ElPeruanoPage() {
           </div>
 
           <nav className="hidden md:flex items-center gap-12 text-sm text-slate-300">
-           <Link
+            <Link
               href="/poder-judicial"
               className="hover:text-white transition"
             >
@@ -190,6 +221,7 @@ export default function ElPeruanoPage() {
               Tribunal Constitucional
             </Link>
           </nav>
+          {AUTH_REQUIRED && <UserMenu />}
         </div>
       </header>
 
@@ -246,7 +278,7 @@ export default function ElPeruanoPage() {
                 `/api/proxy${resultado.url_pdf}`
               ) +
               `#page=${resultado.pages[0]}&search=${search}`
-              console.log(resultado)
+            console.log(resultado)
             return (
               <div
                 key={`${resultado.id}-${resultado.chunk}-${index}`}

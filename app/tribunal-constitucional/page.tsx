@@ -61,6 +61,7 @@ const AUTH_REQUIRED =
 
 export default function ElPeruanoPage() {
   const { user, loading: authLoading } = useAuth()
+  const [buscando, setBuscando] = useState(false);
 
   const [busqueda, setBusqueda] = useState('')
   const [busquedaDebounced, setBusquedaDebounced] =
@@ -232,22 +233,50 @@ export default function ElPeruanoPage() {
     user,
   ])
 
-  useEffect(() => {
-    if (AUTH_REQUIRED) {
-      if (!authLoading && user) {
-        cargarResultados()
-      }
-    } else {
-      cargarResultados()
-    }
-  }, [
-    authLoading,
-    user,
-    cargarResultados,
-  ])
 
-  const handleBuscar = () => {
-    cargarResultados()
+  const gastarCredito = async () => {
+    if (!AUTH_REQUIRED || !user) return
+
+    try {
+      const response = await fetch('/api/creditos/gastar', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+
+        if (response.status === 402) {
+          // Sin créditos
+          setShowUpgradeModal(true)
+          throw new Error('No tienes créditos disponibles')
+        }
+
+        throw new Error(error.error || 'Error consumiendo crédito')
+      }
+
+      const data = await response.json()
+      console.log('Crédito consumido:', data)
+    } catch (error) {
+      console.error(error)
+      throw error
+    }
+  }
+  const handleBuscar = async () => {
+    if (buscando) return
+
+    setBuscando(true)
+
+    try {
+      await gastarCredito()
+      await cargarResultados()
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setBuscando(false)
+    }
   }
 
   const busquedaLimpia = busquedaDebounced

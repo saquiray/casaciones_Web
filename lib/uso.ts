@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase-server'
+import { consumirCreditos } from '@/lib/creditos'
 
 export interface PerfilConPlan {
   id: string
@@ -7,6 +8,7 @@ export interface PerfilConPlan {
   plan_id: string
   consultas_usadas: number
   fecha_reset: string
+  creditos: number
   planes: {
     consultas_mes: number
   }
@@ -44,6 +46,8 @@ export async function verificarCuota(userId: string): Promise<{
   consultasUsadas: number
   consultasMax: number
   planId: string
+  creditos: number
+  usaraCredito: boolean
 }> {
   try {
     const perfil = await obtenerPerfil(userId)
@@ -51,7 +55,7 @@ export async function verificarCuota(userId: string): Promise<{
     if (!perfil) {
       console.log('Perfil no encontrado para usuario:', userId)
       // Si no hay perfil, permitir acceso con plan gratis por defecto
-      return { permitido: true, consultasUsadas: 0, consultasMax: 10, planId: 'gratis' }
+      return { permitido: true, consultasUsadas: 0, consultasMax: 10, planId: 'gratis', creditos: 0, usaraCredito: false }
     }
 
     // Verificar si hay que resetear el contador (nuevo mes)
@@ -84,22 +88,48 @@ export async function verificarCuota(userId: string): Promise<{
     }
 
     const esIlimitado = consultasMax === -1
+    const dentroDeCuota = esIlimitado || perfil.consultas_usadas < consultasMax
+    const creditos = perfil.creditos ?? 0
+
+    // Si ya se agoto la cuota mensual del plan, se puede seguir usando la app
+    // consumiendo creditos comprados (paquetes de creditos)
+    const usaraCredito = !dentroDeCuota && creditos > 0
 
     return {
-      permitido: esIlimitado || perfil.consultas_usadas < consultasMax,
+      permitido: dentroDeCuota || usaraCredito,
       consultasUsadas: perfil.consultas_usadas,
       consultasMax: consultasMax,
-      planId: perfil.plan_id
+      planId: perfil.plan_id,
+      creditos,
+      usaraCredito,
     }
   } catch (error) {
     console.error('Error en verificarCuota:', error)
     // En caso de error, permitir acceso para no bloquear al usuario
-    return { permitido: true, consultasUsadas: 0, consultasMax: 10, planId: 'gratis' }
+    return { permitido: true, consultasUsadas: 0, consultasMax: 10, planId: 'gratis', creditos: 0, usaraCredito: false }
   }
 }
 
-export async function incrementarUso(userId: string): Promise<number> {
+/**
+ * Registra el uso de una consulta. Si el usuario ya agoto la cuota mensual de su
+ * plan pero tiene creditos comprados, descuenta 1 credito en vez de bloquear el uso.
+ */
+export async function incrementarUso(userId: string): Promise<{
+  consultasUsadas: number
+  creditos: number
+  usoConCredito: boolean
+}> {
   const supabase = await createClient()
+  const cuota = await verificarCuota(userId)
+
+  if (cuota.usaraCredito) {
+    const nuevoSaldo = await consumirCreditos(userId, 1, 'Consulta de casacion')
+    return {
+      consultasUsadas: cuota.consultasUsadas,
+      creditos: nuevoSaldo ?? cuota.creditos,
+      usoConCredito: true,
+    }
+  }
 
   const { data } = await supabase
     .from('perfiles')
@@ -114,5 +144,9 @@ export async function incrementarUso(userId: string): Promise<number> {
     .update({ consultas_usadas: nuevasConsultas })
     .eq('id', userId)
 
-  return nuevasConsultas
+  return {
+    consultasUsadas: nuevasConsultas,
+    creditos: cuota.creditos,
+    usoConCredito: false,
+  }
 }

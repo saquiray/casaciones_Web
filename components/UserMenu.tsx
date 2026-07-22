@@ -74,11 +74,7 @@ export default function UserMenu() {
               {perfil?.nombre || 'Usuario'}
             </p>
             <p className="text-xs text-slate-400 truncate">{user.email}</p>
-            <div className="mt-2">
-              <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded border ${planColor}`}>
-                Plan {planLabel}
-              </span>
-            </div>
+          
           </div>
 
           {/* Stats */}
@@ -87,7 +83,7 @@ export default function UserMenu() {
               <span className="text-slate-400">Consultas usadas</span>
               <span className="text-white font-medium">
                 {perfil?.consultas_usadas || 0}
-                {perfil?.plan_id !== 'profesional' && ' / 10'}
+                {perfil?.plan_id !== 'profesional' && `/${perfil?.creditos}`}
               </span>
             </div>
             {perfil?.plan_id !== 'profesional' && (

@@ -1,7 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plan } from '@/lib/types'
+
+interface ItemCompra {
+  id: string
+  nombre: string
+  precio: number
+}
 
 declare global {
   interface Window {
@@ -33,95 +38,83 @@ declare global {
 }
 
 interface CulqiCheckoutProps {
-  plan: Plan
+  item: ItemCompra
+  tipo: 'plan' | 'creditos'
   userEmail: string
   userName: string
   onSuccess: (data: { token?: string; orderId?: string; method: string }) => void
   onError: (error: string) => void
 }
 
-export default function CulqiCheckout({ plan, userEmail, userName, onSuccess, onError }: CulqiCheckoutProps) {
+export default function CulqiCheckout({ item: plan, tipo, userEmail, userName, onSuccess, onError }: CulqiCheckoutProps) {
   const [loading, setLoading] = useState(false)
   const [metodo, setMetodo] = useState<'tarjeta' | 'yape' | 'pagoefectivo'>('tarjeta')
   const [culqiLoaded, setCulqiLoaded] = useState(false)
 
   useEffect(() => {
-    // Cargar script de Culqi
-    const script = document.createElement('script')
-    script.src = 'https://checkout.culqi.com/js/v4'
-    script.async = true
+    const existing = document.getElementById("culqi-sdk");
+
+    if (existing) {
+      inicializarCulqi();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = "culqi-sdk";
+    script.src = "https://checkout.culqi.com/js/v4";
+    script.async = true;
+
     script.onload = () => {
-      setCulqiLoaded(true)
-    }
-    document.body.appendChild(script)
+      console.log("✅ SDK Culqi cargado");
+      inicializarCulqi();
+    };
 
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script)
-      }
-    }
-  }, [])
+    script.onerror = () => {
+      console.error("❌ No se pudo cargar Culqi");
+      onError("No se pudo cargar Culqi");
+    };
 
-  // Inicializar Culqi cuando carga y tenemos los datos
-  useEffect(() => {
-    if (!culqiLoaded || !window.Culqi) return
+    document.body.appendChild(script);
+  }, []);
 
-    const publicKey = process.env.NEXT_PUBLIC_CULQI_PUBLIC_KEY
+  const inicializarCulqi = () => {
+    if (!window.Culqi) return;
+
+    const publicKey = process.env.NEXT_PUBLIC_CULQI_PUBLIC_KEY;
+
     if (!publicKey) {
-      console.error('NEXT_PUBLIC_CULQI_PUBLIC_KEY no configurada')
-      return
+      console.error("Falta NEXT_PUBLIC_CULQI_PUBLIC_KEY");
+      return;
     }
 
-    window.Culqi.publicKey = publicKey
+    window.Culqi.publicKey = publicKey;
 
     window.Culqi.settings({
-      title: 'Casaciones Web',
-      currency: 'PEN',
-      amount: plan.precio * 100,
-      order: `plan-${plan.id}-${Date.now()}`,
-    })
+      title: "Casaciones Web",
+      currency: "PEN",
+      amount: Math.round(plan.precio * 100),
+      email: userEmail,
+    });
 
     window.Culqi.options({
-      lang: 'es',
-      installments: false,
-      paymentMethods: {
-        tarjeta: true,
-        yape: true,
-        bancaMovil: false,
-        agente: false,
-        billetera: false,
-        cuotealo: false,
-      },
-      style: {
-        logo: 'https://casaciones-web.vercel.app/logo.png',
-        bannerColor: '#f59e0b',
-        buttonBackground: '#f59e0b',
-        menuColor: '#1e293b',
-        linksColor: '#f59e0b',
-        buttonTextColor: '#ffffff',
-        priceColor: '#f59e0b',
-      }
-    })
+      lang: "es",
+    });
 
-    // Callback global de Culqi
-    window.culqi = function() {
+    window.culqi = () => {
       if (window.Culqi.token) {
         onSuccess({
           token: window.Culqi.token.id,
-          method: 'tarjeta'
-        })
-      } else if (window.Culqi.order) {
-        onSuccess({
-          orderId: window.Culqi.order.id,
-          method: metodo
-        })
+          method: "tarjeta",
+        });
       } else if (window.Culqi.error) {
-        onError(window.Culqi.error.user_message)
+        onError(window.Culqi.error.user_message);
       }
-      setLoading(false)
-    }
-  }, [culqiLoaded, plan, metodo, onSuccess, onError])
 
+      setLoading(false);
+    };
+
+    setCulqiLoaded(true);
+  };
   const handlePagarTarjeta = () => {
     if (!culqiLoaded || !window.Culqi) {
       onError('Culqi no esta cargado. Intenta nuevamente.')
@@ -142,7 +135,8 @@ export default function CulqiCheckout({ plan, userEmail, userName, onSuccess, on
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          planId: plan.id,
+          itemId: plan.id,
+          tipo,
           metodo: 'yape',
           email: userEmail,
           nombre: userName,
@@ -175,7 +169,8 @@ export default function CulqiCheckout({ plan, userEmail, userName, onSuccess, on
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          planId: plan.id,
+          itemId: plan.id,
+          tipo,
           metodo: 'pagoefectivo',
           email: userEmail,
           nombre: userName,

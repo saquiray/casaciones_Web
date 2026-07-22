@@ -11,6 +11,7 @@ interface Perfil {
   plan_id: string
   consultas_usadas: number
   fecha_reset: string
+  creditos: number
 }
 
 interface AuthContextType {

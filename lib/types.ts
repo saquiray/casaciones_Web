@@ -73,6 +73,28 @@ export interface Perfil {
   consultas_usadas: number
   fecha_reset: string
   culqi_customer_id: string | null
+  creditos: number
+  created_at: string
+}
+
+export interface PaqueteCreditos {
+  id: string
+  nombre: string
+  creditos: number
+  precio: number
+  descripcion: string | null
+  destacado: boolean
+  activo: boolean
+}
+
+export interface CreditosHistorial {
+  id: string
+  perfil_id: string
+  tipo: 'compra' | 'consumo' | 'ajuste'
+  cantidad: number
+  saldo_resultante: number
+  descripcion: string | null
+  culqi_charge_id: string | null
   created_at: string
 }
 

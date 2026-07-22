@@ -29,7 +29,7 @@ export default function LoginPage() {
         : error.message)
       setLoading(false)
     } else {
-      router.push('/el-peruano')
+      router.push('/poder-judicial')
       router.refresh()
     }
   }

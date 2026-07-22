@@ -67,6 +67,9 @@ export async function GET(
 
             planId:
               cuota.planId,
+
+            creditos:
+              cuota.creditos,
           },
           { status: 402 }
         )

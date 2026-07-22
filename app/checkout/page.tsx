@@ -6,7 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useAuth } from '@/components/AuthProvider'
 import CulqiCheckout from '@/components/CulqiCheckout'
-import { Plan } from '@/lib/types'
+import { Plan, PaqueteCreditos } from '@/lib/types'
 import { createClient } from '@/lib/supabase-browser'
 
 const PAYMENTS_ENABLED = process.env.NEXT_PUBLIC_ENABLE_PAYMENTS === 'true'
@@ -16,9 +16,11 @@ function CheckoutContent() {
   const searchParams = useSearchParams()
   const { user, perfil, loading: authLoading } = useAuth()
 
-  const planId = searchParams.get('plan')
+  const tipo = (searchParams.get('tipo') === 'creditos' ? 'creditos' : 'plan') as 'plan' | 'creditos'
+  const itemId = tipo === 'creditos' ? searchParams.get('paquete') : searchParams.get('plan')
+  const redirectParam = tipo === 'creditos' ? `tipo=creditos&paquete=${itemId}` : `plan=${itemId}`
 
-  const [plan, setPlan] = useState<Plan | null>(null)
+  const [item, setItem] = useState<Plan | PaqueteCreditos | null>(null)
   const [loading, setLoading] = useState(true)
   const [procesando, setProcesando] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -36,22 +38,23 @@ function CheckoutContent() {
       return
     }
     if (!authLoading && !user) {
-      router.push('/auth/login?redirect=/checkout?plan=' + planId)
+      router.push(`/auth/login?redirect=/checkout?${redirectParam}`)
     }
-  }, [authLoading, user, router, planId])
+  }, [authLoading, user, router, redirectParam])
 
   useEffect(() => {
-    const cargarPlan = async () => {
-      if (!planId) {
+    const cargarItem = async () => {
+      if (!itemId) {
         router.push('/precios')
         return
       }
 
       const supabase = createClient()
+      const tabla = tipo === 'creditos' ? 'paquetes_creditos' : 'planes'
       const { data } = await supabase
-        .from('planes')
+        .from(tabla)
         .select('*')
-        .eq('id', planId)
+        .eq('id', itemId)
         .eq('activo', true)
         .single()
 
@@ -60,12 +63,12 @@ function CheckoutContent() {
         return
       }
 
-      setPlan(data)
+      setItem(data)
       setLoading(false)
     }
 
-    cargarPlan()
-  }, [planId, router])
+    cargarItem()
+  }, [itemId, tipo, router])
 
   const handleSuccess = async (data: { token?: string; orderId?: string; method: string }) => {
     setProcesando(true)
@@ -79,7 +82,8 @@ function CheckoutContent() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             tokenId: data.token,
-            planId: plan?.id,
+            itemId: item?.id,
+            tipo,
           }),
         })
 
@@ -125,9 +129,13 @@ function CheckoutContent() {
     )
   }
 
-  if (!user || !plan) {
+  if (!user || !item) {
     return null
   }
+
+  const esCreditos = tipo === 'creditos'
+  const paquete = esCreditos ? (item as PaqueteCreditos) : null
+  const plan = !esCreditos ? (item as Plan) : null
 
   // Pantalla de exito
   if (exito) {
@@ -141,12 +149,16 @@ function CheckoutContent() {
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Pago exitoso</h1>
           <p className="text-slate-400 mb-6">
-            Tu suscripcion al plan {plan.nombre} ha sido activada.
-            Ya puedes disfrutar de {plan.consultas_mes === -1 ? 'consultas ilimitadas' : `${plan.consultas_mes} consultas por mes`}.
+            {esCreditos ? (
+              <>Se agregaron <span className="text-white font-semibold">{paquete?.creditos}</span> creditos a tu cuenta.</>
+            ) : (
+              <>Tu suscripcion al plan {plan?.nombre} ha sido activada.
+              Ya puedes disfrutar de {plan?.consultas_mes === -1 ? 'consultas ilimitadas' : `${plan?.consultas_mes} consultas por mes`}.</>
+            )}
           </p>
           <div className="flex gap-3 justify-center">
             <Link
-              href="/el-peruano"
+              href="/poder-judicial"
               className="px-6 py-3 text-sm font-medium text-white bg-gradient-to-r from-amber-500 to-amber-600 rounded-lg hover:from-amber-400 hover:to-amber-500 transition-all"
             >
               Ir a buscar casaciones
@@ -250,7 +262,7 @@ function CheckoutContent() {
             </Link>
             <div>
               <h1 className="text-xl font-bold text-white">Checkout</h1>
-              <p className="text-xs text-slate-400">Completa tu suscripcion</p>
+              <p className="text-xs text-slate-400">{esCreditos ? 'Completa la compra de tus creditos' : 'Completa tu suscripcion'}</p>
             </div>
           </div>
         </div>
@@ -274,7 +286,8 @@ function CheckoutContent() {
               </div>
             ) : (
               <CulqiCheckout
-                plan={plan}
+                item={item}
+                tipo={tipo}
                 userEmail={user.email || ''}
                 userName={perfil?.nombre || 'Usuario'}
                 onSuccess={handleSuccess}
@@ -290,18 +303,20 @@ function CheckoutContent() {
 
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Plan</span>
-                  <span className="text-white font-medium">{plan.nombre}</span>
+                  <span className="text-slate-400">{esCreditos ? 'Paquete' : 'Plan'}</span>
+                  <span className="text-white font-medium">{item.nombre}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Consultas</span>
+                  <span className="text-slate-400">{esCreditos ? 'Creditos' : 'Consultas'}</span>
                   <span className="text-white">
-                    {plan.consultas_mes === -1 ? 'Ilimitadas' : `${plan.consultas_mes}/mes`}
+                    {esCreditos
+                      ? `${paquete?.creditos} creditos`
+                      : (plan?.consultas_mes === -1 ? 'Ilimitadas' : `${plan?.consultas_mes}/mes`)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Periodo</span>
-                  <span className="text-white">Mensual</span>
+                  <span className="text-slate-400">{esCreditos ? 'Vigencia' : 'Periodo'}</span>
+                  <span className="text-white">{esCreditos ? 'No caducan' : 'Mensual'}</span>
                 </div>
               </div>
 
@@ -309,8 +324,8 @@ function CheckoutContent() {
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Total</span>
                   <div className="text-right">
-                    <span className="text-2xl font-bold text-white">S/{plan.precio}</span>
-                    <span className="text-slate-400 text-sm">/mes</span>
+                    <span className="text-2xl font-bold text-white">S/{item.precio}</span>
+                    {!esCreditos && <span className="text-slate-400 text-sm">/mes</span>}
                   </div>
                 </div>
               </div>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verificarWebhook } from '@/lib/culqi'
+import { agregarCreditos } from '@/lib/creditos'
 import { supabase } from '@/lib/supabase'
 
 interface CulqiWebhookEvent {
@@ -21,7 +22,8 @@ interface CulqiWebhookEvent {
       }
       metadata?: {
         user_id?: string
-        plan_id?: string
+        tipo?: 'plan' | 'creditos'
+        referencia_id?: string
       }
     }
   }
@@ -80,29 +82,54 @@ export async function POST(request: NextRequest) {
 async function handleChargeSucceeded(event: CulqiWebhookEvent) {
   const charge = event.data.object
   const userId = charge.metadata?.user_id
-  const planId = charge.metadata?.plan_id
+  const referenciaId = charge.metadata?.referencia_id
+  const tipo = charge.metadata?.tipo || 'plan'
 
-  if (!userId || !planId) {
+  if (!userId || !referenciaId) {
     console.log('Charge sin metadata, ignorando')
     return
   }
 
-  // Actualizar pago a completado
+  // Actualizar pago a completado (si no fue marcado ya de forma sincrona)
   await supabase
     .from('pagos')
     .update({ estado: 'completado' })
     .eq('culqi_charge_id', charge.id)
+    .eq('estado', 'pendiente')
+
+  if (tipo === 'creditos') {
+    // Evitar doble acreditacion si procesar-pago ya lo hizo de forma sincrona
+    const { data: yaAcreditado } = await supabase
+      .from('creditos_historial')
+      .select('id')
+      .eq('culqi_charge_id', charge.id)
+      .maybeSingle()
+
+    if (!yaAcreditado) {
+      const { data: paquete } = await supabase
+        .from('paquetes_creditos')
+        .select('*')
+        .eq('id', referenciaId)
+        .single()
+
+      if (paquete) {
+        await agregarCreditos(userId, paquete.creditos, `Compra de paquete ${paquete.nombre}`, charge.id)
+      }
+    }
+    console.log(`Usuario ${userId} acreditado con paquete ${referenciaId}`)
+    return
+  }
 
   // Actualizar plan del usuario
   await supabase
     .from('perfiles')
     .update({
-      plan_id: planId,
+      plan_id: referenciaId,
       consultas_usadas: 0,
     })
     .eq('id', userId)
 
-  console.log(`Usuario ${userId} actualizado a plan ${planId}`)
+  console.log(`Usuario ${userId} actualizado a plan ${referenciaId}`)
 }
 
 async function handleChargeFailed(event: CulqiWebhookEvent) {
@@ -139,11 +166,20 @@ async function handleOrderPaid(event: CulqiWebhookEvent) {
     .update({ estado: 'completado' })
     .eq('id', pago.id)
 
-  // Determinar el plan basado en el monto
-  let planId = 'basico'
-  if (order.amount >= 7900) {
-    planId = 'profesional'
+  if (pago.tipo === 'creditos') {
+    if (pago.creditos_otorgados) {
+      await agregarCreditos(
+        pago.perfil_id,
+        pago.creditos_otorgados,
+        `Compra de paquete ${pago.referencia_id}`,
+        order.id
+      )
+    }
+    console.log(`Orden de creditos pagada: ${order.id}, usuario acreditado`)
+    return
   }
+
+  const planId = pago.referencia_id || 'basico'
 
   // Actualizar plan del usuario
   await supabase

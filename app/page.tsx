@@ -1,12 +1,38 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase-browser";
 
 export default function Home() {
   const [darkMode, setDarkMode] = useState(true);
   const route = useRouter()
+  const supabase = createClient();
+
+  const [user, setUser] = useState<unknown>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+
+  useEffect(() => {
+    const obtenerUsuario = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      setUser(user);
+      setLoadingUser(false);
+    };
+
+    obtenerUsuario();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
   return (
     <main
       className={`relative min-h-screen overflow-hidden transition-colors duration-500 ${darkMode
@@ -88,9 +114,16 @@ export default function Home() {
                   {darkMode ? "☀️" : "🌙"}
                 </button>
 
-                <button className="bg-yellow-400 text-black font-medium px-8 py-3 rounded-full hover:bg-yellow-300 transition" onClick={() => route.push("/login")}>
-                  Comencemos
-                </button>
+                {!loadingUser && (
+                  <button
+                    className="bg-yellow-400 text-black font-medium px-8 py-3 rounded-full hover:bg-yellow-300 transition"
+                    onClick={() =>
+                      route.push(user ? "/cuenta" : "/auth/registro")
+                    }
+                  >
+                    {user ? "Mi perfil" : "Comencemos"}
+                  </button>
+                )}
               </div>
             </div>
           </header>

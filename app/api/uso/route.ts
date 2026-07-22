@@ -12,7 +12,9 @@ export async function GET() {
       permitido: false,
       consultasUsadas: 0,
       consultasMax: 10,
-      planId: 'gratis'
+      planId: 'gratis',
+      creditos: 0,
+      usaraCredito: false,
     })
   }
 
