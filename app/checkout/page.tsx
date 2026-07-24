@@ -9,7 +9,7 @@ import CulqiCheckout from '@/components/CulqiCheckout'
 import { Plan, PaqueteCreditos } from '@/lib/types'
 import { createClient } from '@/lib/supabase-browser'
 
-const PAYMENTS_ENABLED = process.env.NEXT_PUBLIC_ENABLE_PAYMENTS === 'true'
+const PAYMENTS_ENABLED = 'true'
 
 function CheckoutContent() {
   const router = useRouter()
@@ -34,6 +34,7 @@ function CheckoutContent() {
   useEffect(() => {
     // Redirigir si los pagos están deshabilitados
     if (!PAYMENTS_ENABLED) {
+      console.log(PAYMENTS_ENABLED)
       router.push('/precios')
       return
     }
@@ -46,7 +47,9 @@ function CheckoutContent() {
     const cargarItem = async () => {
       if (!itemId) {
         router.push('/precios')
+        console.log("aqui")
         return
+
       }
 
       const supabase = createClient()

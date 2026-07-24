@@ -34,12 +34,12 @@ export default function PreciosPage() {
 
     if (!user) {
       router.push(
-        `/auth/registro?redirect=/checkout?tipo=creditos%26plan=${planId}`
+        `/auth/registro?redirect=/checkout?tipo=creditos%26paquete=${planId}`
       )
       return
     }
 
-    router.push(`/checkout?tipo=creditos&plan=${planId}`)
+    router.push(`/checkout?tipo=creditos&paquete=${planId}`)
   }
 
   return (

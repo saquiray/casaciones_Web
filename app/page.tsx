@@ -20,7 +20,7 @@ export default function Home() {
   const router = useRouter()
   const [darkMode, setDarkMode] = useState(true);
   const route = useRouter()
-  const [planes, setPlanes] = useState<Plan[]>([{ id: "d04d64e3-252e-4f59-bda4-fdf62fb83775", nombre: "Básico", precio: 29.9, consultas_mes: 100, descripcion: "" }, { id: "d6ffe19d-8cc5-4b7f-a27f-789c97aa35c5", nombre: "Profesional", precio: 59.9, consultas_mes: 500, descripcion: "" }, { id: "8e6d8c85-c9e4-4cfc-89a5-56df16e6f9a4", nombre: "Empresarial", precio: 99.9, consultas_mes: 1000, descripcion: "" }])
+  const [planes, setPlanes] = useState<Plan[]>([{ id: "038990b4-d477-459c-a312-09bf260bc9ae", nombre: "Básico", precio: 29.9, consultas_mes: 100, descripcion: "" }, { id: "f366cb33-4bea-45d1-a258-3aa5032346bd", nombre: "Profesional", precio: 59.9, consultas_mes: 500, descripcion: "" }, { id: "0bb0a891-78b1-44a2-b837-5808a8c602fe", nombre: "Empresarial", precio: 99.9, consultas_mes: 1000, descripcion: "" }])
 
   const comprarCreditos = (planId: string) => {
     if (!PAYMENTS_ENABLED) {
@@ -30,12 +30,12 @@ export default function Home() {
 
     if (!user) {
       router.push(
-        `/auth/registro?redirect=/checkout?tipo=creditos%26plan=${planId}`
+        `/auth/registro?redirect=/checkout?tipo=creditos%26paquete=${planId}`
       )
       return
     }
 
-    router.push(`/checkout?tipo=creditos&plan=${planId}`)
+    router.push(`/checkout?tipo=creditos&paquete=${planId}`)
   }
 
   return (

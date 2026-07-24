@@ -102,11 +102,20 @@ export default function CulqiCheckout({ item: plan, tipo, userEmail, userName, o
 
     window.culqi = () => {
       if (window.Culqi.token) {
+
+        // Cerrar modal de Culqi
+        window.Culqi.close();
+
         onSuccess({
           token: window.Culqi.token.id,
           method: "tarjeta",
         });
+
       } else if (window.Culqi.error) {
+
+        // También cerrar si hubo error
+        window.Culqi.close();
+
         onError(window.Culqi.error.user_message);
       }
 

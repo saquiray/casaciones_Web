@@ -185,7 +185,7 @@ export default function ElPeruanoPage() {
     `${busquedaLimpia}`
   )
 
-  if (AUTH_REQUIRED && authLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-10 w-10 border-2 border-amber-500/30 border-t-amber-500"></div>
