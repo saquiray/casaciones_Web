@@ -85,7 +85,7 @@ function RegistroContent() {
             email,
             nombre,
             plan_id: "d04d64e3-252e-4f59-bda4-fdf62fb83775",
-            creditos: 10,
+            creditos: 30,
             consultas_usadas: 0,
           })
           .select()
@@ -145,7 +145,7 @@ function RegistroContent() {
               Crear Cuenta
             </h1>
             <p className="text-slate-400 text-center mb-6">
-              Obten 10 consultas gratis para probar el aplicativo
+              Obten 30 consultas gratis para probar el aplicativo
             </p>
 
             <form onSubmit={handleRegistro} className="space-y-4">
@@ -236,7 +236,7 @@ function RegistroContent() {
               </div>
               <h1 className="text-2xl font-bold text-white mb-2">Cuenta creada</h1>
               <p className="text-slate-400">
-                Ya tienes 10 consultas gratis. Si necesitas mas, puedes
+                Ya tienes 30 consultas gratis. Si necesitas mas, puedes
                 comprar un paquete de creditos ahora o hacerlo despues desde tu cuenta.
               </p>
             </div>
