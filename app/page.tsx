@@ -4,35 +4,40 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase-browser";
-
+import { useAuth } from "@/components/AuthProvider";
+import { LogOut } from "lucide-react"
+const PAYMENTS_ENABLED =
+  process.env.NEXT_PUBLIC_ENABLE_PAYMENTS === 'true'
+interface Plan {
+  id: string
+  nombre: string
+  precio: number
+  consultas_mes: number // ahora representa créditos
+  descripcion: string
+}
 export default function Home() {
+  const { user, perfil, signOut } = useAuth()
+  const router = useRouter()
   const [darkMode, setDarkMode] = useState(true);
   const route = useRouter()
-  const supabase = createClient();
+  const [planes, setPlanes] = useState<Plan[]>([{ id: "d04d64e3-252e-4f59-bda4-fdf62fb83775", nombre: "Básico", precio: 29.9, consultas_mes: 100, descripcion: "" }, { id: "d6ffe19d-8cc5-4b7f-a27f-789c97aa35c5", nombre: "Profesional", precio: 59.9, consultas_mes: 500, descripcion: "" }, { id: "8e6d8c85-c9e4-4cfc-89a5-56df16e6f9a4", nombre: "Empresarial", precio: 99.9, consultas_mes: 1000, descripcion: "" }])
 
-  const [user, setUser] = useState<unknown>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
+  const comprarCreditos = (planId: string) => {
+    if (!PAYMENTS_ENABLED) {
+      alert('Próximamente integración con Culqi')
+      return
+    }
 
-  useEffect(() => {
-    const obtenerUsuario = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+    if (!user) {
+      router.push(
+        `/auth/registro?redirect=/checkout?tipo=creditos%26plan=${planId}`
+      )
+      return
+    }
 
-      setUser(user);
-      setLoadingUser(false);
-    };
+    router.push(`/checkout?tipo=creditos&plan=${planId}`)
+  }
 
-    obtenerUsuario();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
   return (
     <main
       className={`relative min-h-screen overflow-hidden transition-colors duration-500 ${darkMode
@@ -43,12 +48,136 @@ export default function Home() {
 
 
       {/* Glow central */}
-      <div className="absolute left-1/2 top-[55%] -translate-x-1/2 -translate-y-1/2">
+      <div className="hidden absolute left-1/2 top-[55%] -translate-x-1/2 -translate-y-1/2">
         <div className="w-[700px] h-[700px] rounded-full bg-slate-900/40 blur-3xl" />
       </div>
 
-      <div className="relative z-10">
-        <div>
+      <div className="relative z-10 ">
+        <header className={`fixed w-full px-8 py-6 z-100 ${darkMode
+          ? "bg-[#090909] text-white"
+          : "bg-white text-slate-900"
+          }`}>
+          <div className="max-w-7xl mx-auto grid grid-cols-[1fr_2fr_1fr] items-center">
+            {/* Logo */}
+            <div className="flex justify-start">
+              <Link href="/">
+                <Image
+                  src="/logo1.svg"
+                  alt="Logo"
+                  width={60}
+                  height={60}
+                  className="rounded-full"
+                />
+              </Link>
+            </div>
+
+            {/* Menu */}
+            <nav className="hidden md:flex justify-center items-center gap-16 text-md text-slate-300">
+              <Link
+                href="/poder-judicial"
+                className="
+                relative
+                text-slate-300
+                hover:text-white
+                transition
+                after:absolute
+                after:left-0
+                after:-bottom-2
+                after:h-[2px]
+                after:w-0
+                after:bg-yellow-400
+                after:transition-all
+                hover:after:w-full
+                "
+              >
+                Poder Judicial
+              </Link>
+              <Link
+                href="/tribunal-constitucional"
+                className="
+                relative
+                text-slate-300
+                hover:text-white
+                transition
+                after:absolute
+                after:left-0
+                after:-bottom-2
+                after:h-[2px]
+                after:w-0
+                after:bg-yellow-400
+                after:transition-all
+                hover:after:w-full
+                "
+              >
+                Tribunal Constitucional
+              </Link>
+            </nav>
+
+            {/* CTA */}
+            <div className="flex justify-end items-center gap-4">
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className={`hidden px-4 py-3 rounded-full border transition ${darkMode
+                  ? "border-slate-700 bg-slate-900"
+                  : "border-slate-300 bg-white"
+                  }`}
+              >
+                {darkMode ? "☀️" : "🌙"}
+              </button>
+
+              {user ? (<>
+                <button
+                  className="cursor-pointer font-medium px-8 py-2 rounded-full transition bg-yellow-400
+                text-black
+                hover:bg-yellow-300
+                shadow-lg shadow-yellow-500/20"
+                  onClick={() =>
+                    route.push("/cuenta")
+                  }
+                >
+                  Perfil
+                </button>
+                <button
+                  className="cursor-pointer font-medium px-2 py-2 rounded-full transition
+                text-black
+                "
+                  onClick={() =>
+                    signOut()
+                  }
+                >
+                  <LogOut className="cursor-pointer text-white hover:text-yellow-300 transition-colors duration-200"
+                  ></LogOut>
+                </button>
+              </>) : (
+                <>
+                  <button
+                    className="cursor-pointer border-1 border-yellow-400 font-medium px-8 py-2 rounded-full transition border border-slate-700
+                text-white
+                bg-transparent
+                hover:bg-white/5"
+                    onClick={() =>
+                      route.push("/auth/login")
+                    }
+                  >
+                    Login
+                  </button>
+                  <button
+                    className="font-medium px-8 py-2 rounded-full transition bg-yellow-400
+                text-black
+                hover:bg-yellow-300
+                shadow-lg shadow-yellow-500/20"
+                    onClick={() =>
+                      route.push("/auth/registro")
+                    }
+                  >
+                    Sign up
+                  </button>
+                </>)}
+
+            </div>
+          </div>
+        </header>
+        <div className="pt-20">
           <div className="absolute inset-0 flex justify-between px-10 opacity-30 pointer-events-none">
             {[...Array(10)].map((_, i) => (
               <div
@@ -61,76 +190,13 @@ export default function Home() {
             ))}
           </div>
           {/* Navbar */}
-          <header className="px-8 py-6">
-            <div className="max-w-7xl mx-auto flex items-center justify-between">
-              {/* Logo */}
-              <Link href="/">
-                <Image
-                  src="/logo1.svg"
-                  alt="Logo"
-                  width={48}
-                  height={48}
-                  className="rounded-full"
-                />
-              </Link>
 
-
-              {/* Menu */}
-              <nav className="hidden md:flex items-center gap-12 text-sm text-slate-300">
-                <Link
-                  href="/poder-judicial"
-                  className="hover:text-white transition"
-                >
-                  Recursos
-                </Link>
-                <Link
-                  href="/poder-judicial"
-                  className="hover:text-white transition"
-                >
-                  Pricing
-                </Link><Link
-                  href="/poder-judicial"
-                  className="hover:text-white transition"
-                >
-                  Poder Judicial
-                </Link>
-                <Link
-                  href="/tribunal-constitucional"
-                  className="hover:text-white transition"
-                >
-                  Tribunal Constitucional
-                </Link>
-              </nav>
-
-              {/* CTA */}
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setDarkMode(!darkMode)}
-                  className={`px-4 py-3 rounded-full border transition ${darkMode
-                    ? "border-slate-700 bg-slate-900"
-                    : "border-slate-300 bg-white"
-                    }`}
-                >
-                  {darkMode ? "☀️" : "🌙"}
-                </button>
-
-                {!loadingUser && (
-                  <button
-                    className="bg-yellow-400 text-black font-medium px-8 py-3 rounded-full hover:bg-yellow-300 transition"
-                    onClick={() =>
-                      route.push(user ? "/cuenta" : "/auth/registro")
-                    }
-                  >
-                    {user ? "Mi perfil" : "Comencemos"}
-                  </button>
-                )}
-              </div>
-            </div>
-          </header>
 
           {/* Hero */}
           <section className="animate-fade-up relative flex flex-col items-center justify-center min-h-[80vh] text-center px-6">
             <p className="text-sm uppercase tracking-[0.3em] text-slate-500 mb-6">
+              Lex iniusta non est lex            </p>
+            <p className="hidden text-sm uppercase tracking-[0.3em] text-slate-500 mb-6">
               Jurisprudencia Peruana
             </p>
 
@@ -149,7 +215,17 @@ export default function Home() {
               Sentencias, casaciones y jurisprudencia del Poder Judicial y
               Tribunal Constitucional del Perú.
             </p>
-
+            <button
+              className="cursor-pointer mt-10 font-medium px-8 py-2 rounded-full transition bg-yellow-400
+                text-black
+                hover:bg-yellow-300
+                shadow-lg shadow-yellow-500/20"
+              onClick={() =>
+                route.push("/auth/registro")
+              }
+            >
+              Probar ahora
+            </button>
 
             {/* Cards flotantes */}
             <div className="hidden">
@@ -315,7 +391,7 @@ export default function Home() {
             </div>
           </div>
         </section>
-        <section className="py-32 px-6">
+        <section className="hidden py-32 px-6">
           <div className="max-w-6xl mx-auto">
 
             <div className="text-center mb-20">
@@ -325,7 +401,7 @@ export default function Home() {
 
               <p className="text-slate-400 max-w-2xl mx-auto">
                 Todas las funcionalidades están incluidas. La única diferencia
-                entre planes es la cantidad de tokens disponibles para consultas
+                es la cantidad de tokens disponibles para consultas
                 .
               </p>
             </div>
@@ -336,19 +412,17 @@ export default function Home() {
                 <h3 className="text-2xl mb-4">Básico</h3>
 
                 <div className="text-5xl font-light mb-2">
-                  S/19
+                  S/29.90
                 </div>
 
-                <div className="text-slate-500 mb-8">
-                  por mes
-                </div>
+
 
                 <div className="text-3xl mb-6">
-                  500K
+                  100
                 </div>
 
                 <p className="text-slate-400">
-                  tokens mensuales
+                  tokens
                 </p>
               </div>
 
@@ -408,6 +482,216 @@ export default function Home() {
 
           </div>
         </section>
+        <main className="max-w-6xl mx-auto px-4 py-12">
+
+          {/* HERO */}
+          <div className="text-center mb-12">
+
+            <h2 className="text-4xl font-bold text-white mb-4">
+              Elije los créditos cuando los necesites
+            </h2>
+
+            <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+              Cada búsqueda consume un crédito.
+              Los créditos nunca vencen y permanecen en tu cuenta
+              hasta que los utilices.
+            </p>
+
+            {perfil && (
+              <div className="mt-6 inline-flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-3">
+
+                <span className="text-emerald-400">
+                  Saldo actual:
+                </span>
+
+                <span className="font-bold text-white">
+                  {perfil.creditos ?? 0} créditos
+                </span>
+
+              </div>
+            )}
+
+          </div>
+
+          {/* TARJETAS */}
+
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+
+            {planes.map((plan, index) => {
+              const destacado =
+                index === Math.floor(planes.length / 2)
+
+              return (
+                <div
+                  key={plan.id}
+                  className={`relative rounded-2xl p-8 ${destacado
+                    ? 'border-2 border-amber-500/40 bg-gradient-to-br from-amber-500/10 to-amber-600/5'
+                    : 'border border-slate-700/50 bg-slate-800/50'
+                    }`}
+                >
+                  {destacado && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+
+                      <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-black">
+                        Más comprado
+                      </span>
+
+                    </div>
+                  )}
+
+                  <h3 className="text-xl font-bold text-white">
+                    {plan.nombre}
+                  </h3>
+
+                  <div className="mt-4">
+
+                    <span className="text-4xl font-bold text-white">
+                      S/{plan.precio}
+                    </span>
+
+                  </div>
+
+                  <p className="mt-5 text-slate-400 text-sm">
+                    {plan.descripcion}
+                  </p>
+
+                  <ul className="mt-6 space-y-3">
+
+                    <li className="flex items-center gap-2 text-sm text-slate-300">
+
+                      <svg
+                        className="w-5 h-5 text-emerald-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+
+                      {plan.consultas_mes} créditos
+
+                    </li>
+
+                    <li className="flex items-center gap-2 text-sm text-slate-300">
+
+                      <svg
+                        className="w-5 h-5 text-emerald-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+
+                      Acceso al buscador
+
+                    </li>
+
+                    <li className="flex items-center gap-2 text-sm text-slate-300">
+
+                      <svg
+                        className="w-5 h-5 text-emerald-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+
+                      Descarga de PDFs
+
+                    </li>
+                  </ul>
+
+                  <button
+                    onClick={() => comprarCreditos(plan.id)}
+                    className={`mt-8 w-full rounded-lg py-3 text-sm font-semibold transition-all ${destacado
+                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-lg shadow-amber-500/25 hover:from-amber-400 hover:to-amber-500'
+                      : 'bg-slate-700 text-white hover:bg-slate-600'
+                      }`}
+                  >
+                    Comprar créditos
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+
+
+          {/* Información */}
+          <div className="mt-20 max-w-4xl mx-auto">
+
+            <h3 className="mb-8 text-center text-2xl font-bold text-white">
+              Preguntas frecuentes
+            </h3>
+
+            <div className="space-y-4">
+
+              <div className="rounded-xl border border-slate-700/50 bg-slate-800/50 p-6">
+                <h4 className="mb-2 font-semibold text-white">
+                  ¿Cómo funcionan los créditos?
+                </h4>
+
+                <p className="text-sm text-slate-400">
+                  Cada búsqueda realizada en el sistema consume un crédito.
+                  Ver los resultados, abrir el PDF o descargarlo no consume
+                  créditos adicionales.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-700/50 bg-slate-800/50 p-6">
+                <h4 className="mb-2 font-semibold text-white">
+                  ¿Los créditos vencen?
+                </h4>
+
+                <p className="text-sm text-slate-400">
+                  No. Los créditos permanecen en tu cuenta hasta que los utilices.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-700/50 bg-slate-800/50 p-6">
+                <h4 className="mb-2 font-semibold text-white">
+                  ¿Qué métodos de pago aceptan?
+                </h4>
+
+                <p className="text-sm text-slate-400">
+                  Puedes pagar mediante Visa, Mastercard, Yape,
+                  PagoEfectivo y otros métodos disponibles en Culqi.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-700/50 bg-slate-800/50 p-6">
+                <h4 className="mb-2 font-semibold text-white">
+                  ¿Cómo recibo mis créditos?
+                </h4>
+
+                <p className="text-sm text-slate-400">
+                  Después de que el pago sea aprobado, los créditos se
+                  acreditarán automáticamente en tu cuenta y podrás
+                  utilizarlos inmediatamente.
+                </p>
+              </div>
+
+            </div>
+
+          </div>
+
+        </main>
       </div>
     </main>
   );

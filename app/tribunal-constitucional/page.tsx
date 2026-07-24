@@ -6,6 +6,7 @@ import Link from 'next/link'
 import UserMenu from '@/components/UserMenu'
 import ModalUpgrade from '@/components/ModalUpgrade'
 import ModalDetalle from '@/components/ModalDetalle'
+import { useRouter } from 'next/navigation'
 
 import { useAuth } from '@/components/AuthProvider'
 import { TESAURO_DATA } from '@/lib/tesauroData'
@@ -60,8 +61,9 @@ const AUTH_REQUIRED =
   process.env.NEXT_PUBLIC_ENABLE_PAYMENTS === 'true'
 
 export default function ElPeruanoPage() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, perfil, setPerfil } = useAuth()
   const [buscando, setBuscando] = useState(false);
+  const router = useRouter()
 
   const [busqueda, setBusqueda] = useState('')
   const [busquedaDebounced, setBusquedaDebounced] =
@@ -178,7 +180,11 @@ export default function ElPeruanoPage() {
 
     return `Nivel ${level + 1}`
   }
-
+  useEffect(() => {
+    if (AUTH_REQUIRED && !authLoading && !user) {
+      router.push('/')
+    }
+  }, [authLoading, router, user])
   /**
    * BUSQUEDA
    */
@@ -258,6 +264,9 @@ export default function ElPeruanoPage() {
       }
 
       const data = await response.json()
+      if (data.success) {
+        setPerfil(data.perfil)
+      }
       console.log('Crédito consumido:', data)
     } catch (error) {
       console.error(error)
@@ -623,8 +632,8 @@ export default function ElPeruanoPage() {
         onClose={() =>
           setShowUpgradeModal(false)
         }
-        consultasUsadas={0}
-        consultasMax={10}
+        consultasUsadas={perfil?.consultas_usadas || 0}
+        consultasMax={perfil?.creditos || 0}
       />
     </div>
   )

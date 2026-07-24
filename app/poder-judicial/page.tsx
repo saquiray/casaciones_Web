@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import FiltrosBar from '@/components/FiltrosBar'
 import UserMenu from '@/components/UserMenu'
@@ -49,8 +50,15 @@ const AUTH_REQUIRED =
   process.env.NEXT_PUBLIC_ENABLE_PAYMENTS === 'true'
 
 export default function ElPeruanoPage() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, perfil, setPerfil } = useAuth()
+  const router = useRouter()
   const [buscando, setBuscando] = useState(false);
+
+  useEffect(() => {
+    if (AUTH_REQUIRED && !authLoading && !user) {
+      router.push('/')
+    }
+  }, [authLoading, router, user])
 
   const [filtros, setFiltros] = useState<FiltrosState>({
     busqueda: '',
@@ -137,6 +145,11 @@ export default function ElPeruanoPage() {
       }
 
       const data = await response.json()
+
+      if (data.success) {
+        setPerfil(data.perfil)
+      }
+
       console.log('Crédito consumido:', data)
     } catch (error) {
       console.error(error)
@@ -405,8 +418,8 @@ export default function ElPeruanoPage() {
       <ModalUpgrade
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
-        consultasUsadas={0}
-        consultasMax={10}
+        consultasUsadas={perfil?.consultas_usadas || 0}
+        consultasMax={perfil?.creditos || 0}
       />
     </div>
   )

@@ -12,6 +12,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  console.log("entro a otro path")
   return (
     <html lang="es">
       <body className="antialiased font-sans">

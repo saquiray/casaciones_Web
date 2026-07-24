@@ -25,40 +25,9 @@ export default function ModalUpgrade({
   consultasUsadas,
   consultasMax,
 }: ModalUpgradeProps) {
-  const [planes, setPlanes] = useState<Plan[]>([])
+  const [planes, setPlanes] = useState<Plan[]>([{ id: "d04d64e3-252e-4f59-bda4-fdf62fb83775", nombre: "Básico", precio: 29.9, consultas_mes: 100, descripcion: "" }, { id: "d6ffe19d-8cc5-4b7f-a27f-789c97aa35c5", nombre: "Profesional", precio: 59.9, consultas_mes: 500, descripcion: "" }, { id: "8e6d8c85-c9e4-4cfc-89a5-56df16e6f9a4", nombre: "Empresarial", precio: 99.9, consultas_mes: 1000, descripcion: "" }])
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    if (!isOpen) return
-
-    const cargarPlanes = async () => {
-      try {
-        setLoading(true)
-
-        const supabase = createClient()
-
-        const { data, error } = await supabase
-          .from('planes')
-          .select('*')
-          .eq('activo', true)
-          .gt('precio', 0)
-          .order('precio')
-
-        if (error) {
-          console.error(error)
-          return
-        }
-
-        setPlanes(data ?? [])
-      } catch (err) {
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    cargarPlanes()
-  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -103,7 +72,7 @@ export default function ModalUpgrade({
             <span className="font-semibold text-white">
               {consultasMax}
             </span>{' '}
-            consultas incluidas en tu plan.
+            consultas de tu cuenta.
           </p>
 
           {/* Barra */}

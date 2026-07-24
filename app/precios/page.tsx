@@ -21,28 +21,10 @@ export default function PreciosPage() {
   const router = useRouter()
   const { user, perfil } = useAuth()
 
-  const [planes, setPlanes] = useState<Plan[]>([])
+  const [planes, setPlanes] = useState<Plan[]>([{ id: "d04d64e3-252e-4f59-bda4-fdf62fb83775", nombre: "Básico", precio: 29.9, consultas_mes: 100, descripcion: "" }, { id: "d6ffe19d-8cc5-4b7f-a27f-789c97aa35c5", nombre: "Profesional", precio: 59.9, consultas_mes: 500, descripcion: "" }, { id: "8e6d8c85-c9e4-4cfc-89a5-56df16e6f9a4", nombre: "Empresarial", precio: 99.9, consultas_mes: 1000, descripcion: "" }])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const cargarPlanes = async () => {
-      const supabase = createClient()
 
-      const { data } = await supabase
-        .from('planes')
-        .select('*')
-        .eq('activo', true)
-        .order('precio')
-
-      if (data) {
-        setPlanes(data)
-      }
-
-      setLoading(false)
-    }
-
-    cargarPlanes()
-  }, [])
 
   const comprarCreditos = (planId: string) => {
     if (!PAYMENTS_ENABLED) {
@@ -110,7 +92,7 @@ export default function PreciosPage() {
         <div className="text-center mb-12">
 
           <h2 className="text-4xl font-bold text-white mb-4">
-            Compra créditos cuando los necesites
+            Elije los créditos cuando los necesites
           </h2>
 
           <p className="text-lg text-slate-400 max-w-2xl mx-auto">
@@ -136,130 +118,124 @@ export default function PreciosPage() {
         </div>
 
         {/* TARJETAS */}
-        {loading ? (
-          <div className="flex justify-center py-16">
 
-            <div className="animate-spin rounded-full h-10 w-10 border-2 border-amber-500/30 border-t-amber-500" />
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
 
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          {planes.map((plan, index) => {
+            const destacado =
+              index === Math.floor(planes.length / 2)
 
-            {planes.map((plan, index) => {
-              const destacado =
-                index === Math.floor(planes.length / 2)
+            return (
+              <div
+                key={plan.id}
+                className={`relative rounded-2xl p-8 ${destacado
+                  ? 'border-2 border-amber-500/40 bg-gradient-to-br from-amber-500/10 to-amber-600/5'
+                  : 'border border-slate-700/50 bg-slate-800/50'
+                  }`}
+              >
+                {destacado && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
 
-              return (
-                <div
-                  key={plan.id}
-                  className={`relative rounded-2xl p-8 ${destacado
-                      ? 'border-2 border-amber-500/40 bg-gradient-to-br from-amber-500/10 to-amber-600/5'
-                      : 'border border-slate-700/50 bg-slate-800/50'
-                    }`}
-                >
-                  {destacado && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-
-                      <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-black">
-                        Más comprado
-                      </span>
-
-                    </div>
-                  )}
-
-                  <h3 className="text-xl font-bold text-white">
-                    {plan.nombre}
-                  </h3>
-
-                  <div className="mt-4">
-
-                    <span className="text-4xl font-bold text-white">
-                      S/{plan.precio}
+                    <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-black">
+                      Más comprado
                     </span>
 
                   </div>
+                )}
 
-                  <p className="mt-5 text-slate-400 text-sm">
-                    {plan.descripcion}
-                  </p>
+                <h3 className="text-xl font-bold text-white">
+                  {plan.nombre}
+                </h3>
 
-                  <ul className="mt-6 space-y-3">
+                <div className="mt-4">
 
-                    <li className="flex items-center gap-2 text-sm text-slate-300">
+                  <span className="text-4xl font-bold text-white">
+                    S/{plan.precio}
+                  </span>
 
-                      <svg
-                        className="w-5 h-5 text-emerald-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeWidth={2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-
-                      {plan.consultas_mes} créditos
-
-                    </li>
-
-                    <li className="flex items-center gap-2 text-sm text-slate-300">
-
-                      <svg
-                        className="w-5 h-5 text-emerald-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeWidth={2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-
-                      Acceso al buscador
-
-                    </li>
-
-                    <li className="flex items-center gap-2 text-sm text-slate-300">
-
-                      <svg
-                        className="w-5 h-5 text-emerald-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeWidth={2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-
-                      Descarga de PDFs
-
-                    </li>
-                  </ul>
-
-                  <button
-                    onClick={() => comprarCreditos(plan.id)}
-                    className={`mt-8 w-full rounded-lg py-3 text-sm font-semibold transition-all ${destacado
-                        ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-lg shadow-amber-500/25 hover:from-amber-400 hover:to-amber-500'
-                        : 'bg-slate-700 text-white hover:bg-slate-600'
-                      }`}
-                  >
-                    Comprar créditos
-                  </button>
                 </div>
-              )
-            })}
-          </div>
-        )}
+
+                <p className="mt-5 text-slate-400 text-sm">
+                  {plan.descripcion}
+                </p>
+
+                <ul className="mt-6 space-y-3">
+
+                  <li className="flex items-center gap-2 text-sm text-slate-300">
+
+                    <svg
+                      className="w-5 h-5 text-emerald-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+
+                    {plan.consultas_mes} créditos
+
+                  </li>
+
+                  <li className="flex items-center gap-2 text-sm text-slate-300">
+
+                    <svg
+                      className="w-5 h-5 text-emerald-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+
+                    Acceso al buscador
+
+                  </li>
+
+                  <li className="flex items-center gap-2 text-sm text-slate-300">
+
+                    <svg
+                      className="w-5 h-5 text-emerald-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+
+                    Descarga de PDFs
+
+                  </li>
+                </ul>
+
+                <button
+                  onClick={() => comprarCreditos(plan.id)}
+                  className={`mt-8 w-full rounded-lg py-3 text-sm font-semibold transition-all ${destacado
+                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-lg shadow-amber-500/25 hover:from-amber-400 hover:to-amber-500'
+                    : 'bg-slate-700 text-white hover:bg-slate-600'
+                    }`}
+                >
+                  Comprar créditos
+                </button>
+              </div>
+            )
+          })}
+        </div>
+
 
         {/* Información */}
         <div className="mt-20 max-w-4xl mx-auto">

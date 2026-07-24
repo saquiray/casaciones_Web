@@ -18,10 +18,10 @@ export async function POST() {
       )
     }
 
-    // Obtener consultas usadas actuales
+    // Obtener perfil
     const { data: perfil, error: perfilError } = await supabase
       .from('perfiles')
-      .select('consultas_usadas')
+      .select('*')
       .eq('id', user.id)
       .single()
 
@@ -33,14 +33,29 @@ export async function POST() {
     }
 
     const consultasUsadas = perfil.consultas_usadas ?? 0
+    const creditos = perfil.creditos ?? 0
 
-    // Incrementar consultas usadas
-    const { error: updateError } = await supabase
+    // Validar créditos disponibles
+    if (consultasUsadas >= creditos) {
+      return NextResponse.json(
+        {
+          error: 'No tienes créditos disponibles',
+        },
+        {
+          status: 402,
+        }
+      )
+    }
+
+    // Actualizar consultas usadas
+    const { data: perfilActualizado, error: updateError } = await supabase
       .from('perfiles')
       .update({
         consultas_usadas: consultasUsadas + 1,
       })
       .eq('id', user.id)
+      .select()
+      .single()
 
     if (updateError) {
       console.error(updateError)
@@ -53,7 +68,7 @@ export async function POST() {
 
     return NextResponse.json({
       success: true,
-      consultas_usadas: consultasUsadas + 1,
+      perfil: perfilActualizado,
     })
   } catch (error) {
     console.error(error)

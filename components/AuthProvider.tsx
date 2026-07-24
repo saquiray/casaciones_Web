@@ -17,6 +17,7 @@ interface Perfil {
 interface AuthContextType {
   user: User | null
   perfil: Perfil | null
+  setPerfil: React.Dispatch<React.SetStateAction<Perfil | null>>
   session: Session | null
   loading: boolean
   signOut: () => Promise<void>
@@ -26,10 +27,11 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   perfil: null,
+  setPerfil: () => { },
   session: null,
   loading: true,
-  signOut: async () => {},
-  refreshPerfil: async () => {},
+  signOut: async () => { },
+  refreshPerfil: async () => { },
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -88,18 +90,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     )
 
     return () => subscription.unsubscribe()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const signOut = async () => {
     await supabase.auth.signOut()
+    console.log("saliendo")
     setUser(null)
     setPerfil(null)
     setSession(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, perfil, session, loading, signOut, refreshPerfil }}>
+    <AuthContext.Provider value={{
+      user, perfil, setPerfil, session, loading, signOut, refreshPerfil
+    }}>
       {children}
     </AuthContext.Provider>
   )

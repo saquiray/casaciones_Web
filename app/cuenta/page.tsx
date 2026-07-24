@@ -89,14 +89,14 @@ export default function CuentaPage() {
       <header className="border-b border-slate-700/50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center gap-4">
-            <Link
-              href="/poder-judicial"
+            <div
               className="p-2 -ml-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
+              onClick={()=>router.back()}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-            </Link>
+            </div>
             <div>
               <h1 className="text-xl font-bold text-white">Mi Cuenta</h1>
               <p className="text-xs text-slate-400">Gestiona tu perfil, plan y creditos</p>

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
 import { PaqueteCreditos } from '@/lib/types'
+import { useAuth } from '@/components/AuthProvider'
 
 const PAYMENTS_ENABLED = process.env.NEXT_PUBLIC_ENABLE_PAYMENTS === 'true'
 
@@ -17,6 +18,7 @@ function RegistroContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
+  const { user, perfil, setPerfil } = useAuth()
 
   const redirectTo = searchParams.get('redirect')
 
@@ -88,11 +90,10 @@ function RegistroContent() {
           })
           .select()
           .single();
-
         console.log("4. Resultado insert");
         console.log("perfil:", perfil);
         console.log("perfilError:", JSON.stringify(perfilError, null, 2));
-
+        setPerfil(perfil)
         if (perfilError) {
           setError(perfilError.message);
           setLoading(false);
