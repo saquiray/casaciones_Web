@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-browser'
+import { useAuth } from '@/components/AuthProvider'
 
 export default function LoginPage() {
+  const { user } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -25,15 +27,17 @@ export default function LoginPage() {
 
     if (error) {
       setError(error.message === 'Invalid login credentials'
-        ? 'Email o contrasena incorrectos'
+        ? 'Email o contraseña incorrectos'
         : error.message)
       setLoading(false)
-    } else {
-      router.push('/poder-judicial')
-      router.refresh()
     }
   }
-
+  useEffect(() => {
+    if (user) {
+      router.replace('/')
+      router.refresh()
+    }
+  }, [user, router])
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4">
       <div className="max-w-md w-full">
@@ -81,7 +85,7 @@ export default function LoginPage() {
 
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                Contrasena
+                contraseña
               </label>
               <input
                 type="password"
@@ -89,7 +93,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all"
-                placeholder="Tu contrasena"
+                placeholder="Tu contraseña"
               />
             </div>
 

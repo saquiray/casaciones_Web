@@ -57,7 +57,7 @@ export default function Home() {
           ? "bg-[#090909] text-white"
           : "bg-white text-slate-900"
           }`}>
-          <div className="max-w-7xl mx-auto grid grid-cols-[1fr_2fr_1fr] items-center">
+          <div className="max-w-7xl mx-auto grid grid-cols-[1fr_1fr] md:grid-cols-[1fr_2fr_1fr] items-center">
             {/* Logo */}
             <div className="flex justify-start">
               <Link href="/">
@@ -115,15 +115,7 @@ export default function Home() {
 
             {/* CTA */}
             <div className="flex justify-end items-center gap-4">
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className={`hidden px-4 py-3 rounded-full border transition ${darkMode
-                  ? "border-slate-700 bg-slate-900"
-                  : "border-slate-300 bg-white"
-                  }`}
-              >
-                {darkMode ? "☀️" : "🌙"}
-              </button>
+            
 
               {user ? (<>
                 <button
@@ -138,15 +130,30 @@ export default function Home() {
                   Perfil
                 </button>
                 <button
-                  className="cursor-pointer font-medium px-2 py-2 rounded-full transition
-                text-black
-                "
-                  onClick={() =>
-                    signOut()
-                  }
+                  onClick={() => signOut()}
+                  className="group flex items-center gap-2 cursor-pointer px-3 py-2 rounded-full transition-all duration-300 hover:bg-white/5"
                 >
-                  <LogOut className="cursor-pointer text-white hover:text-yellow-300 transition-colors duration-200"
-                  ></LogOut>
+                  <LogOut
+                    className="text-white group-hover:text-yellow-300 transition-colors duration-300"
+                    size={20}
+                  />
+
+                  <span
+                    className="
+      overflow-hidden
+      whitespace-nowrap
+      max-w-0
+      opacity-0
+      group-hover:max-w-24
+      group-hover:opacity-100
+      transition-all
+      duration-300
+      text-sm
+      text-yellow-300
+    "
+                  >
+                    Logout
+                  </span>
                 </button>
               </>) : (
                 <>
@@ -165,7 +172,8 @@ export default function Home() {
                     className="font-medium px-8 py-2 rounded-full transition bg-yellow-400
                 text-black
                 hover:bg-yellow-300
-                shadow-lg shadow-yellow-500/20"
+                shadow-lg shadow-yellow-500/20
+                min-w-[120px]"
                     onClick={() =>
                       route.push("/auth/registro")
                     }
@@ -193,7 +201,7 @@ export default function Home() {
 
 
           {/* Hero */}
-          <section className="animate-fade-up relative flex flex-col items-center justify-center min-h-[80vh] text-center px-6">
+          <section className="animate-fade-up relative flex flex-col items-center justify-center min-h-[100vh] text-center px-6">
             <p className="text-sm uppercase tracking-[0.3em] text-slate-500 mb-6">
               Lex iniusta non est lex            </p>
             <p className="hidden text-sm uppercase tracking-[0.3em] text-slate-500 mb-6">
@@ -209,14 +217,14 @@ export default function Home() {
             </h1>
 
             <p
-              className={`mt-6 max-w-xl ${darkMode ? "text-slate-400" : "text-slate-600"
+              className={`mt-6 max-w-xl mb-10 ${darkMode ? "text-slate-400" : "text-slate-600"
                 }`}
             >
               Sentencias, casaciones y jurisprudencia del Poder Judicial y
               Tribunal Constitucional del Perú.
             </p>
-            <button
-              className="cursor-pointer mt-10 font-medium px-8 py-2 rounded-full transition bg-yellow-400
+            {!user ? <button
+              className="cursor-pointer font-medium px-8 py-2 rounded-full transition bg-yellow-400
                 text-black
                 hover:bg-yellow-300
                 shadow-lg shadow-yellow-500/20"
@@ -226,6 +234,71 @@ export default function Home() {
             >
               Probar ahora
             </button>
+              :
+              <section className="relative z-10 py- px-6">
+                <div className="max-w-6xl mx-auto">
+
+
+                  <div className="grid md:grid-cols-2 gap-8">
+
+                    {/* Poder Judicial */}
+                    <Link href="/poder-judicial">
+                      <div
+                        className={`group p-8 rounded-3xl border transition-all duration-300 hover:-translate-y-2 ${darkMode
+                          ? "bg-slate-900/60 border-slate-800 hover:border-yellow-400"
+                          : "bg-white border-slate-200 hover:border-yellow-500 shadow-sm"
+                          }`}
+                      >
+                        <div className="text-5xl mb-6">⚖️</div>
+
+                        <h3 className="text-2xl font-semibold mb-4">
+                          Poder Judicial
+                        </h3>
+
+                        <p
+                          className={
+                            darkMode
+                              ? "text-slate-400"
+                              : "text-slate-600"
+                          }
+                        >
+                          Casaciones y resoluciones emitidas por las Salas Supremas
+                          del Poder Judicial del Perú.
+                        </p>
+                      </div>
+                    </Link>
+
+                    {/* Tribunal Constitucional */}
+                    <Link href="/tribunal-constitucional">
+                      <div
+                        className={`group p-8 rounded-3xl border transition-all duration-300 hover:-translate-y-2 ${darkMode
+                          ? "bg-slate-900/60 border-slate-800 hover:border-blue-400"
+                          : "bg-white border-slate-200 hover:border-blue-500 shadow-sm"
+                          }`}
+                      >
+                        <div className="text-5xl mb-6">🏛️</div>
+
+                        <h3 className="text-2xl font-semibold mb-4">
+                          Tribunal Constitucional
+                        </h3>
+
+                        <p
+                          className={
+                            darkMode
+                              ? "text-slate-400"
+                              : "text-slate-600"
+                          }
+                        >
+                          Sentencias, precedentes y resoluciones del Tribunal
+                          Constitucional del Perú.
+                        </p>
+                      </div>
+                    </Link>
+
+                  </div>
+                </div>
+              </section>
+            }
 
             {/* Cards flotantes */}
             <div className="hidden">

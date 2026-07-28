@@ -94,11 +94,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const signOut = async () => {
-    await supabase.auth.signOut()
     console.log("saliendo")
     setUser(null)
     setPerfil(null)
     setSession(null)
+    await supabase.auth.signOut()
   }
 
   return (
