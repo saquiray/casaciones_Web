@@ -332,7 +332,7 @@ export default function Home() {
           </section>
 
         </div>
-        <section className="relative z-10 py-24 px-6">
+        {!user && <section className="relative z-10 py-24 px-6">
           <div className="max-w-6xl mx-auto">
 
             <div className="text-center mb-16">
@@ -417,7 +417,7 @@ export default function Home() {
 
             </div>
           </div>
-        </section>
+        </section>}
         <section className="py-32 px-6">
           <div className="max-w-6xl mx-auto">
 
