@@ -11,21 +11,6 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 import { TESAURO_DATA } from '@/lib/tesauroData'
 
-const STOPWORDS = [
-  'de',
-  'la',
-  'el',
-  'los',
-  'las',
-  'y',
-  'o',
-  'en',
-  'del',
-  'al',
-  'por',
-  'para',
-  'con',
-]
 
 interface ResultadoBusqueda {
   id: string
@@ -33,19 +18,23 @@ interface ResultadoBusqueda {
   titulo: string
   fuente: string
   url_pdf: string
-  pagina: number
-  chunk: number
-  mes: string
-  anio: string
+  pagina_inicio: number
+  pagina_fin: number
+  paginas: string
+  anio: number
+  numero: string
+  documento_id: string
   nombre_archivo: string
-  highlight?: {
-    contenido?: string[]
-  }
+  tipo_documento: string
+  contenido: string
 }
 
 interface ApiBusquedaResponse {
-  total: number
-  results: ResultadoBusqueda[]
+  paginaActual: number
+  porPagina: number
+  totalResultados: number
+  totalPaginas: number
+  resultados: ResultadoBusqueda[]
 }
 
 interface TesaurioNode {
@@ -68,16 +57,16 @@ export default function ElPeruanoPage() {
   const [busqueda, setBusqueda] = useState('')
   const [busquedaDebounced, setBusquedaDebounced] =
     useState('')
-  const [mes, setMes] = useState('')
-  const [anio, setAnio] = useState(
-    new Date().getFullYear().toString()
-  )
+  const [anio, setAnio] = useState('')
 
   const [resultados, setResultados] = useState<
     ResultadoBusqueda[]
   >([])
 
   const [total, setTotal] = useState(0)
+
+  const [paginaActual, setPaginaActual] = useState(1)
+  const [totalPaginas, setTotalPaginas] = useState(0)
 
   const [cargando, setCargando] = useState(false)
 
@@ -93,14 +82,6 @@ export default function ElPeruanoPage() {
 
   const [selectedTesaurioPath, setSelectedTesaurioPath] =
     useState<TesaurioNode[]>([])
-
-  const selectedTesaurioSlug = useMemo(() => {
-    if (selectedTesaurioPath.length === 0) return ''
-
-    return selectedTesaurioPath[
-      selectedTesaurioPath.length - 1
-    ].slug
-  }, [selectedTesaurioPath])
 
   const getNodesForLevel = (
     level: number
@@ -195,49 +176,77 @@ export default function ElPeruanoPage() {
 
     return () => clearTimeout(timeout)
   }, [busqueda])
-  const cargarResultados = useCallback(async () => {
-    if (AUTH_REQUIRED && !user) return
 
-    setCargando(true)
+  const cargarResultados = useCallback(
+    async (pagina = 1) => {
 
-    try {
-      const params = new URLSearchParams()
+      if (AUTH_REQUIRED && !user) return
 
-      if (busquedaDebounced?.trim()) {
-        params.set('q', busquedaDebounced)
-      }
+      setCargando(true)
 
-      if (selectedTesaurioSlug) {
-        params.set(
-          'tesaurio_slug',
-          selectedTesaurioSlug
+      try {
+
+        const params = new URLSearchParams()
+
+        if (busquedaDebounced?.trim()) {
+          params.set('q', busquedaDebounced.trim())
+        }
+
+        if (anio) {
+          params.set('anio', anio)
+        }
+
+        params.set('pagina', pagina.toString())
+
+        const response = await fetch(
+          `/api/proxy/search?${params.toString()}`
         )
+
+        if (!response.ok) {
+          throw new Error(
+            `Error HTTP ${response.status}`
+          )
+        }
+
+        const data: ApiBusquedaResponse =
+          await response.json()
+
+        setResultados(data.resultados || [])
+
+        setTotal(data.totalResultados || 0)
+
+        setPaginaActual(data.paginaActual || 1)
+
+        setTotalPaginas(data.totalPaginas || 0)
+
+      } catch (error) {
+
+        console.error(
+          'Error buscando:',
+          error
+        )
+
+        setResultados([])
+
+        setTotal(0)
+
+        setPaginaActual(1)
+
+        setTotalPaginas(0)
+
+      } finally {
+
+        setCargando(false)
+
       }
 
-      const response = await fetch(
-        `/api/proxy/search/sentencias_nuevo?${params.toString()}`
-      )
-
-      const data: ApiBusquedaResponse =
-        await response.json()
-
-      setResultados(data.results || [])
-      setTotal(data.total || 0)
-    } catch (error) {
-      console.error('Error buscando:', error)
-
-      setResultados([])
-      setTotal(0)
-    } finally {
-      setCargando(false)
-    }
-  }, [
-    busquedaDebounced,
-    mes,
-    anio,
-    selectedTesaurioSlug,
-    user,
-  ])
+    },
+    [
+      busquedaDebounced,
+      anio,
+      user
+    ]
+  )
 
 
   const gastarCredito = async () => {
@@ -273,34 +282,31 @@ export default function ElPeruanoPage() {
       throw error
     }
   }
+
   const handleBuscar = async () => {
+
     if (buscando) return
 
     setBuscando(true)
 
     try {
+
       await gastarCredito()
-      await cargarResultados()
+
+      setPaginaActual(1)
+
+      await cargarResultados(1)
+
     } catch (error) {
+
       console.error(error)
+
     } finally {
+
       setBuscando(false)
+
     }
   }
-
-  const busquedaLimpia = busquedaDebounced
-    .split(' ')
-    .filter(
-      palabra =>
-        !STOPWORDS.includes(
-          palabra.toLowerCase()
-        )
-    )
-    .join(' ')
-
-  const search = encodeURIComponent(
-    `"${busquedaLimpia}"`
-  )
 
   if (AUTH_REQUIRED && authLoading) {
     return (
@@ -329,9 +335,14 @@ export default function ElPeruanoPage() {
                 Buscador de Sentencias
               </h1>
 
-              <p className="text-sm text-slate-400">
-                OpenSearch + PDFs indexados
-              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold">
+                  🏛️ Tribunal Constitucional
+                </span>
+                <span className="text-sm text-slate-400">
+                  OpenSearch + PDFs indexados
+                </span>
+              </div>
             </div>
           </div>
           <nav className="hidden md:flex items-center gap-12 text-sm text-slate-300">
@@ -367,83 +378,88 @@ export default function ElPeruanoPage() {
               onChange={e =>
                 setBusqueda(e.target.value)
               }
-              placeholder="Buscar casaciones..."
-              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white outline-none"
+              disabled={buscando || cargando}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !buscando && !cargando) {
+                  e.preventDefault()
+                  handleBuscar()
+                }
+              }}
+              placeholder='Buscar sentencias... Usa "comillas" para una frase exacta'
+              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white outline-none disabled:opacity-60 disabled:cursor-not-allowed"
             />
+            <p className="text-xs text-slate-500 mt-2">
+              Búsqueda normal: <span className="text-slate-300">voto singular magistrado</span>
+              {' · '}
+              Frase exacta: <span className="text-slate-300">"voto singular del magistrado"</span>
+              {' · '}
+              Presiona Enter para buscar
+            </p>
           </div>
 
           {/* TESAURO */}
 
-          <div className="space-y-5">
-            {getTesaurioLevelsToRender().map(
-              level => {
-                const nodes =
-                  getNodesForLevel(level)
+         
+          <div className="mb-5">
 
-                if (!nodes.length) return null
+            <label className="block text-sm font-semibold text-slate-300 mb-2">
+              Año
+            </label>
 
-                return (
-                  <div
-                    key={`tesaurio-level-${level}`}
-                  >
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">
-                      {getTesaurioLevelTitle(
-                        level
-                      )}
-                    </h3>
+            <select
+              value={anio}
+              onChange={e => {
+                setAnio(e.target.value)
+                setPaginaActual(1)
+              }}
+              disabled={buscando || cargando}
+              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+            >
 
-                    <div className="flex flex-wrap gap-2">
-                      {nodes.map(node => {
-                        const active =
-                          getSelectedValueForLevel(
-                            level
-                          ) === node.slug
+              <option value="">
+                Todos los años
+              </option>
 
-                        return (
-                          <button
-                            key={node.slug}
-                            onClick={() =>
-                              handleSelectTesaurioLevel(
-                                level,
-                                node.slug
-                              )
-                            }
-                            className={`
-                            px-3 py-2 rounded-xl text-sm transition
-                            ${active
-                                ? 'bg-amber-500 text-black font-semibold'
-                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                              }
-                          `}
-                          >
-                            {node.nombre} (
-                            {node.count})
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              }
-            )}
+              {Array.from(
+                { length: new Date().getFullYear() - 2000 },
+                (_, i) => new Date().getFullYear() - i
+              ).map(year => (
+
+                <option
+                  key={year}
+                  value={year}
+                >
+                  {year}
+                </option>
+
+              ))}
+
+            </select>
+
           </div>
-
           {/* BOTONES */}
 
           <div className="flex gap-3 mt-6">
             <button
               onClick={handleBuscar}
-              className="px-5 py-3 rounded-xl bg-amber-500 text-black font-semibold hover:bg-amber-400 transition"
+              disabled={buscando || cargando}
+              className="px-5 py-3 rounded-xl bg-amber-500 text-black font-semibold hover:bg-amber-400 transition disabled:opacity-50 disabled:cursor-not-allowed min-w-[110px]"
             >
-              Buscar
+              {buscando || cargando ? 'Buscando...' : 'Buscar'}
             </button>
 
             <button
               onClick={() => {
                 setBusqueda('')
+                setAnio('')
                 setSelectedTesaurioPath([])
+                setPaginaActual(1)
+                setResultados([])
+                setTotal(0)
+                setTotalPaginas(0)
               }}
-              className="px-5 py-3 rounded-xl bg-slate-700 text-white hover:bg-slate-600 transition"
+              disabled={buscando || cargando}
+              className="px-5 py-3 rounded-xl bg-slate-700 text-white hover:bg-slate-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Limpiar
             </button>
@@ -452,23 +468,36 @@ export default function ElPeruanoPage() {
 
         {/* INFO */}
 
-        <div className="flex items-center justify-between mb-6">
-          <div className="text-sm text-slate-400">
-            {cargando ? (
-              <span className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-amber-500/30 border-t-amber-500"></div>
+        <div className="text-sm text-slate-400">
 
-                Buscando...
-              </span>
-            ) : (
-              <>
-                <span className="text-white font-semibold">
-                  {total}
-                </span>{' '}
-                resultados encontrados
-              </>
-            )}
-          </div>
+          {cargando ? (
+
+            <span className="flex items-center gap-2">
+
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-amber-500/30 border-t-amber-500"></div>
+
+              Buscando...
+
+            </span>
+
+          ) : (
+
+            <>
+              <span className="text-white font-semibold">
+                {total}
+              </span>{' '}
+
+              resultados encontrados
+
+              {totalPaginas > 0 && (
+                <span className="ml-2 text-slate-500">
+                  · Página {paginaActual} de {totalPaginas}
+                </span>
+              )}
+            </>
+
+          )}
+
         </div>
 
         {/* RESULTADOS */}
@@ -481,11 +510,11 @@ export default function ElPeruanoPage() {
                 encodeURIComponent(
                   `/api/proxy/pdf/TC/${resultado.nombre_archivo}`
                 ) +
-                `#page=${resultado.pagina}&search=${busqueda}`
+                `#page=${resultado.pagina_inicio || 1}&search=${encodeURIComponent(busqueda)}`
 
               return (
                 <div
-                  key={`${resultado.id}-${resultado.chunk}-${index}`}
+                  key={`${resultado.id}-${resultado.documento_id}-${index}`}
                   className="bg-slate-800/40 border border-slate-700/40 rounded-2xl overflow-hidden shadow-lg hover:border-amber-500/20 transition"
                 >
                   {/* HEADER */}
@@ -505,16 +534,18 @@ export default function ElPeruanoPage() {
                         <div className="flex flex-wrap gap-2 mt-4">
 
                           <span className="px-3 py-1 rounded-xl bg-slate-700/40 text-slate-300 text-xs">
-                            📄 Página {resultado.pagina}
+                            📄 Págs. {resultado.pagina_inicio} - {resultado.pagina_fin}
                           </span>
 
                           <span className="px-3 py-1 rounded-xl bg-slate-700/40 text-slate-300 text-xs">
-                            🧩 Chunk {resultado.chunk}
+                            📅 {resultado.anio}
                           </span>
 
-                          <span className="px-3 py-1 rounded-xl bg-slate-700/40 text-slate-300 text-xs">
-                            📅 {resultado.mes} {resultado.anio}
-                          </span>
+                          {resultado.numero && (
+                            <span className="px-3 py-1 rounded-xl bg-slate-700/40 text-slate-300 text-xs">
+                              ⚖️ {resultado.numero}
+                            </span>
+                          )}
 
                           <span className="px-3 py-1 rounded-xl bg-slate-700/40 text-slate-300 text-xs">
                             🏛️ {resultado.fuente}
@@ -528,21 +559,22 @@ export default function ElPeruanoPage() {
 
                         {/* RESUMEN */}
                         <div className="mt-5">
-                          {resultado.highlight?.contenido?.[0] ? (
-                            <div
-                              className="text-sm leading-7 text-slate-300 bg-slate-900/30 border border-slate-700/20 rounded-xl p-4"
 
-                              dangerouslySetInnerHTML={{
-                                __html:
-                                  resultado.highlight
-                                    .contenido[0],
-                              }}
-                            />
-                          ) : (
-                            <div className="text-slate-500 text-sm">
-                              Sin preview disponible
+                          {resultado.contenido ? (
+
+                            <div className="text-sm leading-7 text-slate-300 bg-slate-900/30 border border-slate-700/20 rounded-xl p-4">
+                              {resultado.contenido.substring(0, 500)}
+                              {resultado.contenido.length > 500 && '...'}
                             </div>
+
+                          ) : (
+
+                            <div className="text-slate-500 text-sm">
+                              Sin contenido disponible
+                            </div>
+
                           )}
+
                         </div>
 
                       </div>
@@ -574,26 +606,7 @@ export default function ElPeruanoPage() {
 
                   {/* HIGHLIGHTS EXTRA */}
 
-                  {resultado.highlight?.contenido &&
-                    resultado.highlight.contenido.length >
-                    1 && (
-                      <div className="px-5 pb-5 space-y-3">
-
-                        {resultado.highlight.contenido
-                          .slice(1)
-                          .map((texto, idx) => (
-                            <div
-                              key={idx}
-                              className="bg-slate-900/20 border border-slate-700/20 rounded-xl p-4 text-sm leading-7 text-slate-400"
-
-                              dangerouslySetInnerHTML={{
-                                __html: texto,
-                              }}
-                            />
-                          ))}
-
-                      </div>
-                    )}
+                
 
                 </div>
               )
@@ -616,6 +629,70 @@ export default function ElPeruanoPage() {
               </p>
             </div>
           )}
+        {totalPaginas > 1 && (
+
+          <div className="flex items-center justify-center gap-2 mt-8">
+
+            <button
+              disabled={paginaActual === 1 || cargando}
+              onClick={() =>
+                cargarResultados(paginaActual - 1)
+              }
+              className="px-4 py-2 rounded-xl bg-slate-700 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-600 transition"
+            >
+              ← Anterior
+            </button>
+
+            {Array.from(
+              { length: totalPaginas },
+              (_, index) => index + 1
+            )
+              .filter(page => {
+
+                return (
+                  page === 1 ||
+                  page === totalPaginas ||
+                  Math.abs(page - paginaActual) <= 2
+                )
+
+              })
+              .map(page => (
+
+                <button
+                  key={page}
+                  onClick={() =>
+                    cargarResultados(page)
+                  }
+                  disabled={cargando}
+                  className={`
+            px-4 py-2 rounded-xl transition
+            ${page === paginaActual
+                      ? 'bg-amber-500 text-black font-semibold'
+                      : 'bg-slate-700 text-white hover:bg-slate-600'
+                    }
+          `}
+                >
+                  {page}
+                </button>
+
+              ))}
+
+            <button
+              disabled={
+                paginaActual === totalPaginas ||
+                cargando
+              }
+              onClick={() =>
+                cargarResultados(paginaActual + 1)
+              }
+              className="px-4 py-2 rounded-xl bg-slate-700 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-600 transition"
+            >
+              Siguiente →
+            </button>
+
+          </div>
+
+        )}
       </main>
 
       {/* MODALS */}

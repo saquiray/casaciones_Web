@@ -7,14 +7,15 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
 
     const q = searchParams.get("q")
-    const year = searchParams.get("year")
+    const year = searchParams.get("anio")
+    const pagina = searchParams.get("pagina")
 
-    const url = `${API_BASE_URL}/search/casaciones_separado?q=${q}&year=${year}`
+    const url = `${API_BASE_URL}/search?q=${q}&anio=${year}&pagina=${pagina}`
 
     const res = await fetch(url)
 
     const data = await res.json()
-
+    console.log("url:", url)
     return NextResponse.json(data)
   } catch (error: unknown) {
     return NextResponse.json(
