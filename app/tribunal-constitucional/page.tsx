@@ -391,7 +391,7 @@ export default function ElPeruanoPage() {
             <p className="text-xs text-slate-500 mt-2">
               Búsqueda normal: <span className="text-slate-300">voto singular magistrado</span>
               {' · '}
-              Frase exacta: <span className="text-slate-300">&quot;voto singular del magistrado&quot</span>
+              Frase exacta: <span className="text-slate-300">&quot;voto singular del magistrado&quot;</span>
               {' · '}
               Presiona Enter para buscar
             </p>
