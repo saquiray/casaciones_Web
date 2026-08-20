@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const pagina = searchParams.get("pagina")
 
     const url = `${API_BASE_URL}/search?q=${q}&anio=${year}&pagina=${pagina}`
-
+    console.log("url:", url)
     const res = await fetch(url)
 
     const data = await res.json()

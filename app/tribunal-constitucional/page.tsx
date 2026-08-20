@@ -398,7 +398,6 @@ export default function ElPeruanoPage() {
           </div>
 
           {/* TESAURO */}
-
          
           <div className="mb-5">
 
@@ -508,7 +507,7 @@ export default function ElPeruanoPage() {
               const pdfViewerUrl =
                 `/api/proxy/pdfjs/web/viewer.html?file=` +
                 encodeURIComponent(
-                  `/api/proxy/pdf/TC/${resultado.nombre_archivo}`
+                  `/api/proxy/pdf/${resultado.nombre_archivo}`
                 ) +
                 `#page=${resultado.pagina_inicio || 1}&search=${encodeURIComponent(busqueda)}`
 

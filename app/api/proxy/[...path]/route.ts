@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, context: Context): Promise<Response>
     (query ? `?${query}` : "")
 
   const res = await fetch(targetUrl)
-
+  console.log("Proxying request to:", targetUrl)
   const contentType = res.headers.get("content-type") || ""
 
   if (contentType.includes("application/json")) {
