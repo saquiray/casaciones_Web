@@ -9,6 +9,7 @@ import ModalUpgrade from '@/components/ModalUpgrade'
 import ModalDetalle from '@/components/ModalDetalle'
 import { useAuth } from '@/components/AuthProvider'
 import { FiltrosState } from '@/lib/types'
+
 const STOPWORDS = [
   'de',
   'la',
@@ -184,7 +185,55 @@ export default function ElPeruanoPage() {
   const search = encodeURIComponent(
     `${busquedaLimpia}`
   )
+  const EN_MANTENIMIENTO = true
 
+  if (EN_MANTENIMIENTO) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4">
+        <div className="max-w-lg w-full text-center">
+
+          <div className="mb-8 flex justify-center">
+            <div className="w-20 h-20 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+              <span className="text-4xl">🔧</span>
+            </div>
+          </div>
+
+          <h1 className="text-3xl font-bold text-white mb-4">
+            Estamos en mantenimiento
+          </h1>
+
+          <p className="text-slate-400 text-lg leading-7 mb-8">
+            El buscador de casaciones se encuentra temporalmente
+            fuera de servicio.
+          </p>
+
+          <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5">
+            <p className="text-sm text-slate-500">
+              Estamos realizando mejoras para brindarte un mejor servicio.
+            </p>
+          </div>
+
+          <Link
+            href="/"
+            className="inline-block mt-8 px-5 py-3 rounded-xl
+                     bg-amber-500/10 border border-amber-500/30
+                     text-amber-400 hover:bg-amber-500/20 transition"
+          >
+            ← Volver al inicio
+          </Link>
+          <Link
+            href="/tribunal-constitucional"
+            className="ml-10 inline-block mt-8 px-5 py-3 rounded-xl
+                     bg-amber-500/10 border border-green-500/30
+                     text-green-400 hover:bg-green-500/20 transition"
+          >
+            → Usar El Buscador de Sentencias
+          </Link>
+
+        </div>
+      </div>
+    )
+  }
   if (authLoading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
