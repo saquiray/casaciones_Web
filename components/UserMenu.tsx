@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useAuth } from './AuthProvider'
 
 export default function UserMenu() {
-  const { user, perfil, loading, signOut } = useAuth()
+  const { user, perfil, signOut } = useAuth()
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -20,11 +20,6 @@ export default function UserMenu() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  if (loading) {
-    return (
-      <div className="w-8 h-8 bg-slate-700 rounded-full animate-pulse" />
-    )
-  }
 
   if (!user) {
     return (
