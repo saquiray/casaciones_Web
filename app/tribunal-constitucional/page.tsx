@@ -351,7 +351,7 @@ export default function ElPeruanoPage() {
               Tribunal Constitucional
             </Link>
           </nav>
-          {AUTH_REQUIRED && <UserMenu />}
+          <UserMenu />
         </div>
       </header>
 

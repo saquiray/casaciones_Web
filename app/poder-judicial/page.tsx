@@ -56,7 +56,7 @@ export default function ElPeruanoPage() {
   const [buscando, setBuscando] = useState(false);
 
   useEffect(() => {
-    if (AUTH_REQUIRED && !authLoading && !user) {
+    if ( !authLoading && !user) {
       router.push('/')
     }
   }, [authLoading, router, user])
