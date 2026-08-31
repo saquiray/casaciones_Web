@@ -118,7 +118,7 @@ export async function GET(
     const endpoint =
       origen === 'sentencias'
         ? 'search/sentencias'
-        : '/search/casaciones_separado'
+        : '/search/casaciones'
 
     console.log(
       'Consulta API:',

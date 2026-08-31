@@ -3,12 +3,19 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+
 import FiltrosBar from '@/components/FiltrosBar'
 import UserMenu from '@/components/UserMenu'
 import ModalUpgrade from '@/components/ModalUpgrade'
 import ModalDetalle from '@/components/ModalDetalle'
+
 import { useAuth } from '@/components/AuthProvider'
 import { FiltrosState } from '@/lib/types'
+
+
+// ============================================================
+// STOPWORDS
+// ============================================================
 
 const STOPWORDS = [
   'de',
@@ -26,450 +33,1313 @@ const STOPWORDS = [
   'con',
 ]
 
+
+// ============================================================
+// RESULTADO DE BÚSQUEDA
+// ============================================================
+
 interface ResultadoBusqueda {
   id: string
+
   score: number
-  titulo: string
-  fuente: string
-  url_pdf: string
-  pagina: number
-  chunk: number
-  mes: string
-  anio: string
-  pages: number[]
-  highlight?: {
-    contenido?: string[]
+
+  casacion_id: string
+
+  chunk_id: number
+
+  numero?: string
+
+  title?: string
+
+  fragmento?: string
+
+  highlights?: {
     content?: string[]
+    title?: string[]
+    numero?: string[]
   }
+
+  source_file?: string
+
+  url_pdf?: string
+
+  pages?: number[]
 }
 
+
+// ============================================================
+// RESPUESTA API
+// ============================================================
+
 interface ApiBusquedaResponse {
-  total: number
-  results: ResultadoBusqueda[]
+  paginaActual: number
+
+  porPagina: number
+
+  totalResultados: number
+
+  totalPaginas: number
+
+  resultados: ResultadoBusqueda[]
 }
+
+
+// ============================================================
+// AUTENTICACIÓN
+// ============================================================
+
 const AUTH_REQUIRED =
   process.env.NEXT_PUBLIC_ENABLE_PAYMENTS === 'true'
 
+
+// ============================================================
+// COMPONENTE
+// ============================================================
+
 export default function ElPeruanoPage() {
-  const { user, loading: authLoading, perfil, setPerfil } = useAuth()
+
+  const {
+    user,
+    loading: authLoading,
+    perfil,
+    setPerfil,
+  } = useAuth()
+
+
   const router = useRouter()
-  const [buscando, setBuscando] = useState(false);
 
-  useEffect(() => {
-    if ( !authLoading && !user) {
-      router.push('/')
-    }
-  }, [authLoading, router, user])
 
-  const [filtros, setFiltros] = useState<FiltrosState>({
-    busqueda: '',
-    tipo: '',
-    anio: '',
-    mes: '',
-    fechaDesde: '',
-    fechaHasta: '',
-  })
+  // ==========================================================
+  // ESTADOS
+  // ==========================================================
 
-  const [resultados, setResultados] = useState<
-    ResultadoBusqueda[]
-  >([])
+  const [buscando, setBuscando] =
+    useState(false)
 
-  const [total, setTotal] = useState(0)
 
-  const [cargando, setCargando] = useState(false)
+  const [resultados, setResultados] =
+    useState<ResultadoBusqueda[]>([])
+
+
+  const [total, setTotal] =
+    useState(0)
+
+
+  const [cargando, setCargando] =
+    useState(false)
+
 
   const [showUpgradeModal, setShowUpgradeModal] =
     useState(false)
 
+
   const [casacionSeleccionada, setCasacionSeleccionada] =
     useState<number | null>(null)
 
-  const cargarResultados = useCallback(async () => {
-    if (AUTH_REQUIRED && !user) return
 
-    setCargando(true)
+  // ==========================================================
+  // FILTROS
+  // ==========================================================
 
-    try {
-      const params = new URLSearchParams()
+  const [filtros, setFiltros] =
+    useState<FiltrosState>({
 
-      if (filtros.busqueda?.trim()) {
-        params.set('q', filtros.busqueda)
-      }
+      busqueda: '',
 
-      if (filtros.mes) {
-        params.set('month', filtros.mes)
-      }
+      tipo: '',
 
-      if (filtros.anio) {
-        params.set('year', filtros.anio)
-      }
+      anio: '',
 
-      const response = await fetch(
-        `/api/proxy/search/casaciones_separado?${params.toString()}`
-      )
+      mes: '',
 
-      const data: ApiBusquedaResponse =
-        await response.json()
+      fechaDesde: '',
 
-      setResultados(data.results || [])
-      setTotal(data.total || 0)
-    } catch (error) {
-      console.error('Error buscando:', error)
-      setResultados([])
-      setTotal(0)
-    } finally {
-      setCargando(false)
+      fechaHasta: '',
+
+    })
+
+
+  // ==========================================================
+  // REDIRECCIÓN SI NO AUTENTICADO
+  // ==========================================================
+
+  useEffect(() => {
+
+    if (
+      !authLoading &&
+      !user
+    ) {
+
+      router.push('/')
+
     }
-  }, [filtros, user])
 
-  const gastarCredito = async () => {
-    if (!AUTH_REQUIRED || !user) return
+  }, [
+    authLoading,
+    router,
+    user,
+  ])
 
-    try {
-      const response = await fetch('/api/creditos/gastar', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
 
-      if (!response.ok) {
-        const error = await response.json()
+  // ==========================================================
+  // CARGAR RESULTADOS
+  // ==========================================================
 
-        if (response.status === 402) {
-          // Sin créditos
-          setShowUpgradeModal(true)
-          throw new Error('No tienes créditos disponibles')
+  const cargarResultados =
+    useCallback(
+      async () => {
+
+        if (
+          AUTH_REQUIRED &&
+          !user
+        ) {
+
+          return
+
         }
 
-        throw new Error(error.error || 'Error consumiendo crédito')
+
+        setCargando(true)
+
+
+        try {
+
+          // ==================================================
+          // PARÁMETROS
+          // ==================================================
+
+          const params =
+            new URLSearchParams()
+
+
+          // --------------------------------------------------
+          // BÚSQUEDA
+          // --------------------------------------------------
+
+          if (
+            filtros.busqueda?.trim()
+          ) {
+
+            params.set(
+              'q',
+              filtros.busqueda.trim()
+            )
+
+          }
+
+
+          // --------------------------------------------------
+          // MES
+          // --------------------------------------------------
+
+          if (
+            filtros.mes
+          ) {
+
+            params.set(
+              'month',
+              filtros.mes
+            )
+
+          }
+
+
+          // --------------------------------------------------
+          // AÑO
+          // --------------------------------------------------
+
+          if (
+            filtros.anio
+          ) {
+
+            params.set(
+              'year',
+              filtros.anio
+            )
+
+          }
+
+
+          // ==================================================
+          // CONSULTAR BACKEND
+          // ==================================================
+
+          const url =
+            `/api/proxy/search/casaciones?${params.toString()}`
+
+
+          console.log(
+            'Consultando:',
+            url
+          )
+
+
+          const response =
+            await fetch(
+              url,
+              {
+                method: 'GET',
+
+                headers: {
+                  'Content-Type':
+                    'application/json',
+                },
+
+                cache: 'no-store',
+              }
+            )
+
+
+          // ==================================================
+          // ERROR HTTP
+          // ==================================================
+
+          if (
+            !response.ok
+          ) {
+
+            const texto =
+              await response.text()
+
+            console.error(
+              'Error backend:',
+              texto
+            )
+
+            throw new Error(
+              `Error HTTP ${response.status}`
+            )
+
+          }
+
+
+          // ==================================================
+          // JSON
+          // ==================================================
+
+          const data:
+            ApiBusquedaResponse =
+            await response.json()
+
+
+          console.log(
+            'Respuesta búsqueda:',
+            data
+          )
+
+
+          // ==================================================
+          // RESULTADOS
+          // ==================================================
+
+          setResultados(
+            data.resultados || []
+          )
+
+
+          // ==================================================
+          // TOTAL
+          // ==================================================
+
+          setTotal(
+            data.totalResultados || 0
+          )
+
+
+        } catch (error) {
+
+          console.error(
+            'Error buscando:',
+            error
+          )
+
+
+          setResultados([])
+
+          setTotal(0)
+
+
+        } finally {
+
+          setCargando(false)
+
+        }
+
+      },
+      [
+        filtros,
+        user,
+      ]
+    )
+
+
+  // ==========================================================
+  // GASTAR CRÉDITO
+  // ==========================================================
+
+  const gastarCredito =
+    async () => {
+
+      if (
+        !AUTH_REQUIRED ||
+        !user
+      ) {
+
+        return
+
       }
 
-      const data = await response.json()
 
-      if (data.success) {
-        setPerfil(data.perfil)
-      }
+      try {
 
-      console.log('Crédito consumido:', data)
-    } catch (error) {
-      console.error(error)
-      throw error
-    }
-  }
-  const handleBuscar = async () => {
-    if (buscando) return
+        const response =
+          await fetch(
+            '/api/creditos/gastar',
+            {
+              method: 'POST',
 
-    setBuscando(true)
+              headers: {
+                'Content-Type':
+                  'application/json',
+              },
+            }
+          )
 
-    try {
-      await gastarCredito()
-      await cargarResultados()
-    } catch (error) {
-      console.error(error)
-    } finally {
-      setBuscando(false)
-    }
-  }
 
-  const busquedaLimpia = filtros.busqueda
-    .split(' ')
-    .filter(
-      palabra =>
-        !STOPWORDS.includes(
-          palabra.toLowerCase()
+        // ====================================================
+        // ERROR
+        // ====================================================
+
+        if (
+          !response.ok
+        ) {
+
+          const error =
+            await response.json()
+
+
+          // --------------------------------------------------
+          // SIN CRÉDITOS
+          // --------------------------------------------------
+
+          if (
+            response.status === 402
+          ) {
+
+            setShowUpgradeModal(
+              true
+            )
+
+            throw new Error(
+              'No tienes créditos disponibles'
+            )
+
+          }
+
+
+          throw new Error(
+            error.error ||
+            'Error consumiendo crédito'
+          )
+
+        }
+
+
+        // ====================================================
+        // RESPUESTA
+        // ====================================================
+
+        const data =
+          await response.json()
+
+
+        if (
+          data.success
+        ) {
+
+          setPerfil(
+            data.perfil
+          )
+
+        }
+
+
+        console.log(
+          'Crédito consumido:',
+          data
         )
+
+
+      } catch (error) {
+
+        console.error(
+          error
+        )
+
+        throw error
+
+      }
+
+    }
+
+
+  // ==========================================================
+  // BUSCAR
+  // ==========================================================
+
+  const handleBuscar =
+    async () => {
+
+      if (
+        buscando
+      ) {
+
+        return
+
+      }
+
+
+      setBuscando(true)
+
+
+      try {
+
+        await gastarCredito()
+
+        await cargarResultados()
+
+
+      } catch (error) {
+
+        console.error(
+          error
+        )
+
+
+      } finally {
+
+        setBuscando(false)
+
+      }
+
+    }
+
+
+  // ==========================================================
+  // LIMPIAR BÚSQUEDA PARA PDF.JS
+  // ==========================================================
+
+  const busquedaLimpia =
+    filtros.busqueda
+      .split(' ')
+      .filter(
+        palabra =>
+          !STOPWORDS.includes(
+            palabra.toLowerCase()
+          )
+      )
+      .join(' ')
+
+
+  const search =
+    encodeURIComponent(
+      busquedaLimpia
     )
-    .join(' ')
 
-  const search = encodeURIComponent(
-    `${busquedaLimpia}`
-  )
-  const EN_MANTENIMIENTO = true
 
-  if (EN_MANTENIMIENTO) {
+  // ==========================================================
+  // LOADING AUTH
+  // ==========================================================
+
+  if (
+    authLoading
+  ) {
+
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4">
-        <div className="max-w-lg w-full text-center">
 
-          <div className="mb-8 flex justify-center">
-            <div className="w-20 h-20 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-              <span className="text-4xl">🔧</span>
-            </div>
-          </div>
-
-          <h1 className="text-3xl font-bold text-white mb-4">
-            Estamos en mantenimiento
-          </h1>
-
-          <p className="text-slate-400 text-lg leading-7 mb-8">
-            El buscador de casaciones se encuentra temporalmente
-            fuera de servicio.
-          </p>
-
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5">
-            <p className="text-sm text-slate-500">
-              Estamos realizando mejoras para brindarte un mejor servicio.
-            </p>
-          </div>
-
-          <Link
-            href="/"
-            className="inline-block mt-8 px-5 py-3 rounded-xl
-                     bg-amber-500/10 border border-amber-500/30
-                     text-amber-400 hover:bg-amber-500/20 transition"
-          >
-            ← Volver al inicio
-          </Link>
-          <Link
-            href="/tribunal-constitucional"
-            className="ml-10 inline-block mt-8 px-5 py-3 rounded-xl
-                     bg-amber-500/10 border border-green-500/30
-                     text-green-400 hover:bg-green-500/20 transition"
-          >
-            → Usar El Buscador de Sentencias
-          </Link>
-
-        </div>
-      </div>
-    )
-  }
-  if (authLoading) {
-    return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-amber-500/30 border-t-amber-500"></div>
+
+        <div
+          className="
+            animate-spin
+            rounded-full
+            h-10
+            w-10
+            border-2
+            border-amber-500/30
+            border-t-amber-500
+          "
+        />
+
       </div>
+
     )
+
   }
+
+
+  // ==========================================================
+  // RENDER
+  // ==========================================================
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
 
+    <div
+      className="
+        min-h-screen
+        bg-gradient-to-br
+        from-slate-900
+        via-slate-800
+        to-slate-900
+      "
+    >
+
+
+      {/* ==================================================== */}
       {/* HEADER */}
-      <header className="sticky top-0 z-40 backdrop-blur-md bg-slate-900/70 border-b border-slate-700/50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+      {/* ==================================================== */}
 
-          <div className="flex items-center gap-4">
+      <header
+        className="
+          sticky
+          top-0
+          z-40
+          backdrop-blur-md
+          bg-slate-900/70
+          border-b
+          border-slate-700/50
+        "
+      >
+
+        <div
+          className="
+            max-w-7xl
+            mx-auto
+            px-4
+            py-4
+            flex
+            items-center
+            justify-between
+          "
+        >
+
+
+          {/* ------------------------------------------------ */}
+          {/* TÍTULO */}
+          {/* ------------------------------------------------ */}
+
+          <div
+            className="
+              flex
+              items-center
+              gap-4
+            "
+          >
 
             <Link
               href="/"
-              className="text-slate-400 hover:text-white transition"
+              className="
+                text-slate-400
+                hover:text-white
+                transition
+              "
             >
               ← Volver
             </Link>
 
+
             <div>
-              <h1 className="text-2xl font-bold text-white">
+
+              <h1
+                className="
+                  text-2xl
+                  font-bold
+                  text-white
+                "
+              >
                 Buscador de Casaciones
               </h1>
 
-              <p className="text-sm text-slate-400">
+
+              <p
+                className="
+                  text-sm
+                  text-slate-400
+                "
+              >
                 OpenSearch + PDFs indexados
               </p>
+
             </div>
+
           </div>
 
-          <nav className="hidden md:flex items-center gap-12 text-sm text-slate-300">
+
+          {/* ------------------------------------------------ */}
+          {/* NAVEGACIÓN */}
+          {/* ------------------------------------------------ */}
+
+          <nav
+            className="
+              hidden
+              md:flex
+              items-center
+              gap-12
+              text-sm
+              text-slate-300
+            "
+          >
+
             <Link
               href="/poder-judicial"
-              className="hover:text-white transition"
+              className="
+                hover:text-white
+                transition
+              "
             >
               Poder Judicial
             </Link>
+
+
             <Link
               href="/tribunal-constitucional"
-              className="hover:text-white transition"
+              className="
+                hover:text-white
+                transition
+              "
             >
               Tribunal Constitucional
             </Link>
+
           </nav>
-          {AUTH_REQUIRED && <UserMenu />}
+
+
+          {/* ------------------------------------------------ */}
+          {/* USER MENU */}
+          {/* ------------------------------------------------ */}
+
+          {AUTH_REQUIRED && (
+            <UserMenu />
+          )}
+
         </div>
+
       </header>
 
-      {/* MAIN */}
-      <main className="max-w-7xl mx-auto px-4 py-6">
 
+      {/* ==================================================== */}
+      {/* MAIN */}
+      {/* ==================================================== */}
+
+      <main
+        className="
+          max-w-7xl
+          mx-auto
+          px-4
+          py-6
+        "
+      >
+
+
+        {/* ================================================== */}
         {/* FILTROS */}
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5 mb-6">
+        {/* ================================================== */}
+
+        <div
+          className="
+            bg-slate-800/50
+            border
+            border-slate-700/50
+            rounded-2xl
+            p-5
+            mb-6
+          "
+        >
+
           <FiltrosBar
             filtros={filtros}
             onChange={setFiltros}
             onBuscar={handleBuscar}
           />
+
         </div>
 
-        {/* INFO */}
-        <div className="flex items-center justify-between mb-6">
 
-          <div className="text-sm text-slate-400">
+        {/* ================================================== */}
+        {/* INFORMACIÓN */}
+        {/* ================================================== */}
+
+        <div
+          className="
+            flex
+            items-center
+            justify-between
+            mb-6
+          "
+        >
+
+          <div
+            className="
+              text-sm
+              text-slate-400
+            "
+          >
+
             {cargando ? (
-              <span className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-amber-500/30 border-t-amber-500"></div>
 
-                Buscando...
-              </span>
-            ) : (
-              <>
-                <span className="text-white font-semibold">
-                  {total}
-                </span>{' '}
-                resultados encontrados
-              </>
-            )}
-          </div>
-
-          {filtros.busqueda && (
-            <div className="text-xs text-slate-500">
-              búsqueda:{' '}
-              <span className="text-amber-400">
-                {filtros.busqueda}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* RESULTADOS */}
-        <div className="space-y-5">
-
-          {resultados.map((resultado, index) => {
-            console.log('Resultado:', resultado.url_pdf) // Debug: Ver estructura de resultado
-            const pdfViewerUrl =
-              `/api/proxy/pdfjs/web/viewer.html?file=` +
-              encodeURIComponent(
-                `/api/proxy${resultado.url_pdf}`
-              ) +
-              `#page=${resultado.pages[0]}&search=${search}`
-            console.log(resultado)
-            return (
-              <div
-                key={`${resultado.id}-${resultado.chunk}-${index}`}
-                className="bg-slate-800/40 border border-slate-700/40 rounded-2xl overflow-hidden shadow-lg"
+              <span
+                className="
+                  flex
+                  items-center
+                  gap-2
+                "
               >
 
-                {/* TOP */}
-                <div className="p-5 border-b border-slate-700/30">
+                <div
+                  className="
+                    animate-spin
+                    rounded-full
+                    h-4
+                    w-4
+                    border-2
+                    border-amber-500/30
+                    border-t-amber-500
+                  "
+                />
 
-                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+                Buscando...
 
-                    <div className="flex-1">
+              </span>
 
-                      <h2 className="text-white font-bold text-lg break-all">
-                        {resultado.titulo}
-                      </h2>
+            ) : (
 
-                      <div className="flex flex-wrap gap-3 mt-3 text-xs">
+              <>
 
-                        <span className="px-2 py-1 rounded-lg bg-slate-700/50 text-slate-300">
-                          📄 Página {resultado.pagina}
-                        </span>
+                <span
+                  className="
+                    text-white
+                    font-semibold
+                  "
+                >
+                  {total}
+                </span>
 
-                        <span className="px-2 py-1 rounded-lg bg-slate-700/50 text-slate-300">
-                          🧩 Chunk {resultado.chunk}
-                        </span>
+                {' '}
 
-                        <span className="px-2 py-1 rounded-lg bg-slate-700/50 text-slate-300">
-                          📅 {resultado.mes} {resultado.anio}
-                        </span>
+                resultados encontrados
 
-                        <span className="px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 font-semibold">
-                          ⭐ {resultado.score?.toFixed(2)}
-                        </span>
+              </>
+
+            )}
+
+          </div>
+
+
+          {/* ------------------------------------------------ */}
+          {/* TEXTO BUSCADO */}
+          {/* ------------------------------------------------ */}
+
+          {filtros.busqueda && (
+
+            <div
+              className="
+                text-xs
+                text-slate-500
+              "
+            >
+
+              búsqueda:{' '}
+
+              <span
+                className="
+                  text-amber-400
+                "
+              >
+                {filtros.busqueda}
+              </span>
+
+            </div>
+
+          )}
+
+        </div>
+
+
+        {/* ================================================== */}
+        {/* RESULTADOS */}
+        {/* ================================================== */}
+
+        <div
+          className="
+            space-y-5
+          "
+        >
+
+          {resultados.map(
+            (
+              resultado,
+              index
+            ) => {
+
+
+              // ============================================
+              // PÁGINA DEL PDF
+              // ============================================
+
+              const paginaPDF =
+                resultado.pages &&
+                resultado.pages.length > 0
+                  ? resultado.pages[0]
+                  : 1
+
+
+              // ============================================
+              // URL DEL VISOR PDF.JS
+              // ============================================
+
+              const pdfViewerUrl =
+                `/api/proxy/pdfjs/web/viewer.html?file=` +
+                encodeURIComponent(
+                  `/api/proxy${resultado.url_pdf}`
+                ) +
+                `#page=${paginaPDF}&search=${search}`
+
+
+              console.log(
+                'Resultado:',
+                resultado
+              )
+
+
+              // ============================================
+              // RENDER
+              // ============================================
+
+              return (
+
+                <div
+                  key={
+                    `${resultado.casacion_id}-${index}`
+                  }
+                  className="
+                    bg-slate-800/40
+                    border
+                    border-slate-700/40
+                    rounded-2xl
+                    overflow-hidden
+                    shadow-lg
+                  "
+                >
+
+
+                  {/* ====================================== */}
+                  {/* CABECERA RESULTADO */}
+                  {/* ====================================== */}
+
+                  <div
+                    className="
+                      p-5
+                      border-b
+                      border-slate-700/30
+                    "
+                  >
+
+                    <div
+                      className="
+                        flex
+                        flex-col
+                        lg:flex-row
+                        lg:items-start
+                        lg:justify-between
+                        gap-5
+                      "
+                    >
+
+
+                      {/* ================================== */}
+                      {/* INFORMACIÓN */}
+                      {/* ================================== */}
+
+                      <div
+                        className="
+                          flex-1
+                        "
+                      >
+
+
+                        {/* -------------------------------- */}
+                        {/* TÍTULO */}
+                        {/* -------------------------------- */}
+
+                        <h2
+                          className="
+                            text-white
+                            font-bold
+                            text-lg
+                            break-all
+                          "
+                        >
+
+                          {resultado.title ||
+                            resultado.numero ||
+                            resultado.casacion_id}
+
+                        </h2>
+
+
+                        {/* -------------------------------- */}
+                        {/* DATOS */}
+                        {/* -------------------------------- */}
+
+                        <div
+                          className="
+                            flex
+                            flex-wrap
+                            gap-3
+                            mt-3
+                            text-xs
+                          "
+                        >
+
+
+                          {/* CASACIÓN */}
+
+                          <span
+                            className="
+                              px-2
+                              py-1
+                              rounded-lg
+                              bg-slate-700/50
+                              text-slate-300
+                            "
+                          >
+                            ⚖️ {resultado.casacion_id}
+                          </span>
+
+
+                          {/* NÚMERO */}
+
+                          {resultado.numero && (
+
+                            <span
+                              className="
+                                px-2
+                                py-1
+                                rounded-lg
+                                bg-slate-700/50
+                                text-slate-300
+                              "
+                            >
+                              📑 {resultado.numero}
+                            </span>
+
+                          )}
+
+
+                          {/* PÁGINA */}
+
+                          <span
+                            className="
+                              px-2
+                              py-1
+                              rounded-lg
+                              bg-slate-700/50
+                              text-slate-300
+                            "
+                          >
+                            📄 Página {paginaPDF}
+                          </span>
+
+
+                          {/* CHUNK */}
+
+                          <span
+                            className="
+                              px-2
+                              py-1
+                              rounded-lg
+                              bg-slate-700/50
+                              text-slate-300
+                            "
+                          >
+                            🧩 Chunk {resultado.chunk_id}
+                          </span>
+
+
+                          {/* SCORE */}
+
+                          <span
+                            className="
+                              px-2
+                              py-1
+                              rounded-lg
+                              bg-amber-500/10
+                              border
+                              border-amber-500/20
+                              text-amber-400
+                              font-semibold
+                            "
+                          >
+                            ⭐ {resultado.score?.toFixed(2)}
+                          </span>
+
+                        </div>
 
                       </div>
-                    </div>
 
-                    {/* BOTONES */}
-                    <div className="flex items-center gap-3">
 
-                      {/* VER PDF */}
-                      <a
-                        href={pdfViewerUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-4 py-2 rounded-xl text-sm font-medium bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition"
+                      {/* ================================== */}
+                      {/* BOTONES */}
+                      {/* ================================== */}
+
+                      <div
+                        className="
+                          flex
+                          items-center
+                          gap-3
+                        "
                       >
-                        Ver PDF
-                      </a>
 
-                      {/* DESCARGAR */}
-                      <a
-                        href={`/api/proxy${resultado.url_pdf}`}
-                        download
-                        className="px-4 py-2 rounded-xl text-sm font-medium bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition"
-                      >
-                        Descargar
-                      </a>
+
+                        {/* -------------------------------- */}
+                        {/* VER PDF */}
+                        {/* -------------------------------- */}
+
+                        {resultado.url_pdf && (
+
+                          <a
+                            href={
+                              pdfViewerUrl
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="
+                              px-4
+                              py-2
+                              rounded-xl
+                              text-sm
+                              font-medium
+                              bg-blue-500/10
+                              border
+                              border-blue-500/30
+                              text-blue-400
+                              hover:bg-blue-500/20
+                              transition
+                            "
+                          >
+                            Ver PDF
+                          </a>
+
+                        )}
+
+
+                        {/* -------------------------------- */}
+                        {/* DESCARGAR */}
+                        {/* -------------------------------- */}
+
+                        {resultado.url_pdf && (
+
+                          <a
+                            href={
+                              `/api/proxy${resultado.url_pdf}`
+                            }
+                            download
+                            className="
+                              px-4
+                              py-2
+                              rounded-xl
+                              text-sm
+                              font-medium
+                              bg-emerald-500/10
+                              border
+                              border-emerald-500/30
+                              text-emerald-400
+                              hover:bg-emerald-500/20
+                              transition
+                            "
+                          >
+                            Descargar
+                          </a>
+
+                        )}
+
+                      </div>
 
                     </div>
 
                   </div>
-                </div>
 
-                {/* HIGHLIGHTS */}
-                <div className="p-5 space-y-4">
 
-                  {resultado.highlight?.content?.length ? (
+                  {/* ====================================== */}
+                  {/* PREVIEW */}
+                  {/* ====================================== */}
 
-                    resultado.highlight.content.map(
-                      (texto, idx) => (
+                  <div
+                    className="
+                      p-5
+                      space-y-4
+                    "
+                  >
 
-                        <div
-                          key={idx}
-                          className="bg-slate-900/40 border border-slate-700/30 rounded-xl p-4 text-sm leading-7 text-slate-300"
 
-                          dangerouslySetInnerHTML={{
-                            __html: texto,
-                          }}
-                        />
+                    {/* ==================================== */}
+                    {/* HIGHLIGHT */}
+                    {/* ==================================== */}
 
+                    {resultado.highlights?.content?.length ? (
+
+                      resultado.highlights.content.map(
+                        (
+                          texto,
+                          idx
+                        ) => (
+
+                          <div
+                            key={idx}
+                            className="
+                              bg-slate-900/40
+                              border
+                              border-slate-700/30
+                              rounded-xl
+                              p-4
+                              text-sm
+                              leading-7
+                              text-slate-300
+                            "
+                            dangerouslySetInnerHTML={{
+                              __html:
+                                texto,
+                            }}
+                          />
+
+                        )
                       )
-                    )
 
-                  ) : (
+                    ) : resultado.fragmento ? (
 
-                    <div className="text-slate-500 text-sm">
-                      Sin preview disponible
-                    </div>
+                      <div
+                        className="
+                          bg-slate-900/40
+                          border
+                          border-slate-700/30
+                          rounded-xl
+                          p-4
+                          text-sm
+                          leading-7
+                          text-slate-300
+                        "
+                        dangerouslySetInnerHTML={{
+                          __html:
+                            resultado.fragmento,
+                        }}
+                      />
 
-                  )}
+                    ) : (
+
+                      <div
+                        className="
+                          text-slate-500
+                          text-sm
+                        "
+                      >
+                        Sin preview disponible
+                      </div>
+
+                    )}
+
+
+                  </div>
 
                 </div>
 
-              </div>
-            )
-          })}
+              )
+
+            }
+          )}
+
         </div>
 
-        {/* VACIO */}
-        {!cargando && resultados.length === 0 && (
-          <div className="text-center py-20">
 
-            <div className="text-slate-500 text-lg">
-              No se encontraron resultados
+        {/* ================================================== */}
+        {/* SIN RESULTADOS */}
+        {/* ================================================== */}
+
+        {!cargando &&
+          resultados.length === 0 && (
+
+            <div
+              className="
+                text-center
+                py-20
+              "
+            >
+
+              <div
+                className="
+                  text-slate-500
+                  text-lg
+                "
+              >
+                No se encontraron resultados
+              </div>
+
+
+              <p
+                className="
+                  text-slate-600
+                  text-sm
+                  mt-2
+                "
+              >
+                Intenta con otra búsqueda o cambia los filtros
+              </p>
+
             </div>
 
-            <p className="text-slate-600 text-sm mt-2">
-              Intenta con otra búsqueda o cambia los filtros
-            </p>
-
-          </div>
-        )}
+          )}
 
       </main>
 
-      {/* MODALS */}
+
+      {/* ==================================================== */}
+      {/* MODAL DETALLE */}
+      {/* ==================================================== */}
+
       <ModalDetalle
-        casacionId={casacionSeleccionada}
-        onCerrar={() => setCasacionSeleccionada(null)}
+        casacionId={
+          casacionSeleccionada
+        }
+        onCerrar={() =>
+          setCasacionSeleccionada(
+            null
+          )
+        }
       />
 
+
+      {/* ==================================================== */}
+      {/* MODAL UPGRADE */}
+      {/* ==================================================== */}
+
       <ModalUpgrade
-        isOpen={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
-        consultasUsadas={perfil?.consultas_usadas || 0}
-        consultasMax={perfil?.creditos || 0}
+        isOpen={
+          showUpgradeModal
+        }
+        onClose={() =>
+          setShowUpgradeModal(
+            false
+          )
+        }
+        consultasUsadas={
+          perfil?.consultas_usadas || 0
+        }
+        consultasMax={
+          perfil?.creditos || 0
+        }
       />
+
     </div>
+
   )
+
 }
