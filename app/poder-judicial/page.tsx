@@ -45,7 +45,7 @@ interface ResultadoBusqueda {
 
   casacion_id: string
 
-  chunk_id: number
+  chunk_id?: number
 
   numero?: string
 
@@ -53,7 +53,7 @@ interface ResultadoBusqueda {
 
   fragmento?: string
 
-  highlights?: {
+  highlight?: {
     content?: string[]
     title?: string[]
     numero?: string[]
@@ -63,7 +63,7 @@ interface ResultadoBusqueda {
 
   url_pdf?: string
 
-  pages?: number[]
+  pages?: number[] | number | string | string[]
 }
 
 
@@ -229,41 +229,39 @@ export default function ElPeruanoPage() {
 
 
           // --------------------------------------------------
-          // MES
+          // PÁGINA
           // --------------------------------------------------
+          //
+          // El endpoint nuevo acepta:
+          // q, pagina, casacion_id, source_file
+          //
+          // El backend usa 20 resultados por página.
+          // Por ahora comenzamos siempre en la página 1.
+          //
 
-          if (
-            filtros.mes
-          ) {
-
-            params.set(
-              'month',
-              filtros.mes
-            )
-
-          }
+          params.set('pagina', '1')
 
 
           // --------------------------------------------------
           // AÑO
           // --------------------------------------------------
-
-          if (
-            filtros.anio
-          ) {
-
-            params.set(
-              'year',
-              filtros.anio
-            )
-
-          }
+          //
+          // El endpoint /search/casaciones todavía no tiene
+          // un parámetro "year". No lo enviamos para evitar
+          // parámetros incompatibles.
+          //
+          // Si luego queremos filtrar por año, se puede
+          // implementar en el backend usando un campo del
+          // documento.
+          //
 
 
           // ==================================================
           // CONSULTAR BACKEND
           // ==================================================
 
+          // Endpoint compatible con:
+          // GET /search/casaciones?q=&pagina=&casacion_id=&source_file=
           const url =
             `/api/proxy/search/casaciones?${params.toString()}`
 
@@ -342,7 +340,9 @@ export default function ElPeruanoPage() {
           // ==================================================
 
           setTotal(
-            data.totalResultados || 0
+            data.totalResultados ??
+            (data as unknown as { total?: number }).total ??
+            0
           )
 
 
@@ -886,11 +886,23 @@ export default function ElPeruanoPage() {
               // PÁGINA DEL PDF
               // ============================================
 
-              const paginaPDF =
-                resultado.pages &&
-                resultado.pages.length > 0
-                  ? resultado.pages[0]
+              const paginaPDF = (() => {
+                const pages = resultado.pages
+
+                if (Array.isArray(pages)) {
+                  const primera = pages[0]
+                  const numero = Number(primera)
+                  return Number.isFinite(numero) && numero > 0
+                    ? numero
+                    : 1
+                }
+
+                const numero = Number(pages)
+
+                return Number.isFinite(numero) && numero > 0
+                  ? numero
                   : 1
+              })()
 
 
               // ============================================
@@ -900,9 +912,9 @@ export default function ElPeruanoPage() {
               const pdfViewerUrl =
                 `/api/proxy/pdfjs/web/viewer.html?file=` +
                 encodeURIComponent(
-                  `/api/proxy${resultado.url_pdf}`
+                  `/api/proxy/casaciones/${resultado.source_file}`
                 ) +
-                `#page=${paginaPDF}&search=${search}`
+                `#page=${resultado.pagina_inicio}&search=${search}`
 
 
               console.log(
@@ -919,7 +931,7 @@ export default function ElPeruanoPage() {
 
                 <div
                   key={
-                    `${resultado.casacion_id}-${index}`
+                    `${resultado.id || resultado.casacion_id || 'resultado'}-${index}`
                   }
                   className="
                     bg-slate-800/40
@@ -982,7 +994,8 @@ export default function ElPeruanoPage() {
 
                           {resultado.title ||
                             resultado.numero ||
-                            resultado.casacion_id}
+                            resultado.casacion_id ||
+                            'Casación'}
 
                         </h2>
 
@@ -1062,7 +1075,7 @@ export default function ElPeruanoPage() {
                               text-slate-300
                             "
                           >
-                            🧩 Chunk {resultado.chunk_id}
+                            🧩 Chunk {resultado.chunk_id ?? '—'}
                           </span>
 
 
@@ -1100,66 +1113,135 @@ export default function ElPeruanoPage() {
                         "
                       >
 
+                        {resultado.source_file && (
 
-                        {/* -------------------------------- */}
-                        {/* VER PDF */}
-                        {/* -------------------------------- */}
+                          <>
+                            {/* -------------------------------- */}
+                            {/* VER PDF */}
+                            {/* -------------------------------- */}
 
-                        {resultado.url_pdf && (
+                            <a
+                              href={pdfViewerUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Ver documento PDF"
+                              className="
+                                group
+                                flex
+                                items-center
+                                justify-center
+                                gap-2
+                                px-4
+                                py-2
+                                rounded-xl
+                                text-sm
+                                font-semibold
+                                bg-blue-500/10
+                                border
+                                border-blue-500/30
+                                text-blue-400
+                                hover:bg-blue-500/20
+                                hover:border-blue-400/50
+                                hover:text-blue-300
+                                transition-all
+                                duration-200
+                              "
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                className="
+                                  h-5
+                                  w-5
+                                  transition-transform
+                                  duration-200
+                                  group-hover:scale-110
+                                "
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M2.036 12.322a1.012 1.012 0 0 1 0-.644C3.423 7.51 7.36 5 12 5c4.64 0 8.577 2.51 9.964 6.678.06.21.06.434 0 .644C20.577 16.49 16.64 19 12 19c-4.64 0-8.577-2.51-9.964-6.678Z"
+                                />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                                />
+                              </svg>
 
-                          <a
-                            href={
-                              pdfViewerUrl
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="
-                              px-4
-                              py-2
-                              rounded-xl
-                              text-sm
-                              font-medium
-                              bg-blue-500/10
-                              border
-                              border-blue-500/30
-                              text-blue-400
-                              hover:bg-blue-500/20
-                              transition
-                            "
-                          >
-                            Ver PDF
-                          </a>
-
-                        )}
+                              <span>Ver PDF</span>
+                            </a>
 
 
-                        {/* -------------------------------- */}
-                        {/* DESCARGAR */}
-                        {/* -------------------------------- */}
+                            {/* -------------------------------- */}
+                            {/* DESCARGAR PDF */}
+                            {/* -------------------------------- */}
 
-                        {resultado.url_pdf && (
+                            <a
+                              href={`/api/proxy${resultado.url_pdf}`}
+                              download
+                              title="Descargar documento PDF"
+                              className="
+                                group
+                                flex
+                                items-center
+                                justify-center
+                                gap-2
+                                px-4
+                                py-2
+                                rounded-xl
+                                text-sm
+                                font-semibold
+                                bg-emerald-500/10
+                                border
+                                border-emerald-500/30
+                                text-emerald-400
+                                hover:bg-emerald-500/20
+                                hover:border-emerald-400/50
+                                hover:text-emerald-300
+                                transition-all
+                                duration-200
+                              "
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                className="
+                                  h-5
+                                  w-5
+                                  transition-transform
+                                  duration-200
+                                  group-hover:translate-y-0.5
+                                "
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M12 3v12"
+                                />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="m7 10 5 5 5-5"
+                                />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M5 21h14"
+                                />
+                              </svg>
 
-                          <a
-                            href={
-                              `/api/proxy${resultado.url_pdf}`
-                            }
-                            download
-                            className="
-                              px-4
-                              py-2
-                              rounded-xl
-                              text-sm
-                              font-medium
-                              bg-emerald-500/10
-                              border
-                              border-emerald-500/30
-                              text-emerald-400
-                              hover:bg-emerald-500/20
-                              transition
-                            "
-                          >
-                            Descargar
-                          </a>
+                              <span>Descargar</span>
+                            </a>
+
+                          </>
 
                         )}
 
@@ -1186,9 +1268,9 @@ export default function ElPeruanoPage() {
                     {/* HIGHLIGHT */}
                     {/* ==================================== */}
 
-                    {resultado.highlights?.content?.length ? (
+                    {resultado.highlight?.content?.length ? (
 
-                      resultado.highlights.content.map(
+                      resultado.highlight.content.map(
                         (
                           texto,
                           idx
