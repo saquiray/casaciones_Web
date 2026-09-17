@@ -115,7 +115,7 @@ export default function Home() {
 
             {/* CTA */}
             <div className="flex justify-end items-center gap-4">
-            
+
 
               {user ? (<>
                 <button
@@ -766,6 +766,107 @@ export default function Home() {
 
         </main>
       </div>
+      <footer className="relative z-10 border-t border-slate-800 bg-[#070707] px-6 py-12">
+        <div className="mx-auto max-w-6xl">
+
+          <div className="grid gap-10 md:grid-cols-3">
+
+            {/* Marca */}
+            <div>
+              <div className="mb-4 flex items-center gap-3">
+                <img
+                  src="/logo1.svg"
+                  alt="Casaciones"
+                  className="h-10 w-auto"
+                />
+
+                <span className="text-xl font-bold text-white">
+                  Casaciones
+                </span>
+              </div>
+
+              <p className="max-w-sm text-sm leading-6 text-slate-400">
+                Plataforma digital para la búsqueda y consulta de
+                resoluciones y casaciones judiciales.
+              </p>
+            </div>
+
+            {/* Información */}
+            <div>
+              <h3 className="mb-4 font-semibold text-white">
+                Información
+              </h3>
+
+              <div className="flex flex-col gap-3 text-sm">
+
+                <Link
+                  href="/terminos-y-condiciones"
+                  className="text-slate-400 transition hover:text-yellow-400"
+                >
+                  Términos y condiciones
+                </Link>
+
+                <Link
+                  href="/politica-privacidad"
+                  className="text-slate-400 transition hover:text-yellow-400"
+                >
+                  Política de privacidad
+                </Link>
+
+                <Link
+                  href="/cambios-y-devoluciones"
+                  className="text-slate-400 transition hover:text-yellow-400"
+                >
+                  Cambios y devoluciones
+                </Link>
+
+                <Link
+                  href="/libro-reclamaciones"
+                  className="text-slate-400 transition hover:text-yellow-400"
+                >
+                  Libro de reclamaciones
+                </Link>
+
+              </div>
+            </div>
+
+            {/* Contacto */}
+            <div>
+              <h3 className="mb-4 font-semibold text-white">
+                Contacto
+              </h3>
+
+              <div className="space-y-3 text-sm text-slate-400">
+
+                <p>
+                  Correo:{" "}
+                  <a
+                    href="mailto:TU_CORREO"
+                    className="transition hover:text-yellow-400"
+                  >
+                    TU_CORREO
+                  </a>
+                </p>
+
+                <p>
+                  Teléfono: TU_TELEFONO
+                </p>
+
+                <p>
+                  Lima, Perú
+                </p>
+
+              </div>
+            </div>
+
+          </div>
+
+          <div className="mt-10 border-t border-slate-800 pt-6 text-center text-xs text-slate-500">
+            © {new Date().getFullYear()} Casaciones. Todos los derechos reservados.
+          </div>
+
+        </div>
+      </footer>
     </main>
   );
 }
