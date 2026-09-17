@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 
 const supabaseAdmin = createClient(
   supabaseUrl,
-  serviceRoleKey,
+  supabaseKey,
   {
     auth: {
       autoRefreshToken: false,
@@ -17,7 +17,6 @@ const supabaseAdmin = createClient(
 
 function generarCodigo() {
   const fecha = new Date();
-
   const year = fecha.getFullYear();
 
   const random = Math.floor(
@@ -48,9 +47,7 @@ export async function POST(request: NextRequest) {
       acepta_declaracion,
     } = body;
 
-    /*
-     * Validaciones básicas
-     */
+    // Validaciones básicas
 
     if (!tipo || !["RECLAMO", "QUEJA"].includes(tipo)) {
       return NextResponse.json(
@@ -134,15 +131,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    /*
-     * Generar código
-     */
+    // Generar código
 
     let codigo = generarCodigo();
 
-    /*
-     * Evitar colisiones
-     */
+    // Evitar colisiones
 
     let existe = true;
 
@@ -160,9 +153,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    /*
-     * Insertar
-     */
+    // Insertar reclamo
 
     const { data, error } = await supabaseAdmin
       .from("libro_reclamaciones")
@@ -218,7 +209,6 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-
   } catch (error) {
     console.error(
       "Error API Libro de Reclamaciones:",

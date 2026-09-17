@@ -36,7 +36,7 @@ export default function TerminosYCondicionesPage() {
               Los presentes Términos y Condiciones regulan el acceso,
               navegación y utilización de la plataforma digital
               <strong className="text-white"> Casaciones </strong>
-              (en adelante, la "Plataforma"), así como la adquisición
+              (en adelante, la &quot;Plataforma&quot;), así como la adquisición
               y utilización de los servicios y paquetes de créditos
               ofrecidos a través de ella.
             </p>
@@ -70,8 +70,8 @@ export default function TerminosYCondicionesPage() {
 
             <p className="mt-4">
               Para efectos de estos Términos y Condiciones, la empresa
-              antes identificada será denominada "Casaciones",
-              "nosotros" o "la Plataforma".
+              antes identificada será denominada &quot;Casaciones&quot;,
+              &quot;nosotros&quot; o &quot;la Plataforma&quot;.
             </p>
           </section>
 
