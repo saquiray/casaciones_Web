@@ -1791,64 +1791,77 @@ export default function ElPeruanoPage() {
 
             {/* PÁGINAS */}
 
-            {Array.from(
-              {
-                length:
-                  totalPaginas
-              },
-              (_, index) =>
-                index + 1
-            )
-              .filter(
-                page => {
+            {(() => {
+              const paginas: (number | '...')[] = []
 
-                  return (
-                    page === 1 ||
-                    page === totalPaginas ||
-                    Math.abs(
-                      page -
-                      paginaActual
-                    ) <= 2
-                  )
-
+              if (totalPaginas <= 7) {
+                for (let i = 1; i <= totalPaginas; i++) {
+                  paginas.push(i)
                 }
-              )
-              .map(
-                page => (
+              } else {
+                paginas.push(1)
 
+                if (paginaActual > 4) {
+                  paginas.push('...')
+                }
+
+                const inicio = Math.max(2, paginaActual - 2)
+                const fin = Math.min(
+                  totalPaginas - 1,
+                  paginaActual + 2
+                )
+
+                for (let i = inicio; i <= fin; i++) {
+                  if (!paginas.includes(i)) {
+                    paginas.push(i)
+                  }
+                }
+
+                if (paginaActual < totalPaginas - 3) {
+                  paginas.push('...')
+                }
+
+                paginas.push(totalPaginas)
+              }
+
+              return paginas.map((page, index) =>
+                page === '...' ? (
+                  <span
+                    key={`ellipsis-${index}`}
+                    className="
+                      px-2
+                      py-2
+                      text-slate-500
+                    "
+                  >
+                    ...
+                  </span>
+                ) : (
                   <button
                     key={page}
-                    onClick={
-                      () =>
-                        cargarResultados(
-                          page
-                        )
+                    onClick={() =>
+                      cargarResultados(page)
                     }
-                    disabled={
-                      cargando
-                    }
+                    disabled={cargando}
                     className={`
-                      px-4
+                      min-w-10
+                      px-3
                       py-2
-                      rounded-xl
+                      rounded-full
                       transition
 
                       ${
-                        page ===
-                        paginaActual
-
+                        page === paginaActual
                           ? 'bg-amber-500 text-black font-semibold'
-
                           : 'bg-slate-700 text-white hover:bg-slate-600'
                       }
                     `}
                   >
                     {page}
                   </button>
-
                 )
-              )}
-
+              )
+            })()}
 
             {/* SIGUIENTE */}
 

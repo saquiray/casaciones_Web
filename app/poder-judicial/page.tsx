@@ -126,6 +126,12 @@ export default function ElPeruanoPage() {
   const [total, setTotal] =
     useState(0)
 
+  const [paginaActual, setPaginaActual] =
+    useState(1)
+
+  const [totalPaginas, setTotalPaginas] =
+    useState(0)
+
 
   const [cargando, setCargando] =
     useState(false)
@@ -189,7 +195,7 @@ export default function ElPeruanoPage() {
 
   const cargarResultados =
     useCallback(
-      async () => {
+      async (paginaSolicitada: number = paginaActual) => {
 
         if (
           AUTH_REQUIRED &&
@@ -241,7 +247,7 @@ export default function ElPeruanoPage() {
           // Por ahora comenzamos siempre en la página 1.
           //
 
-          params.set('pagina', '1')
+          params.set('pagina', String(paginaSolicitada))
 
 
           // --------------------------------------------------
@@ -347,6 +353,21 @@ export default function ElPeruanoPage() {
             0
           )
 
+          setPaginaActual(
+            data.paginaActual ?? paginaSolicitada
+          )
+
+          setTotalPaginas(
+            data.totalPaginas ??
+            Math.ceil(
+              (
+                data.totalResultados ??
+                (data as unknown as { total?: number }).total ??
+                0
+              ) / (data.porPagina || 20)
+            )
+          )
+
 
         } catch (error) {
 
@@ -371,6 +392,7 @@ export default function ElPeruanoPage() {
       [
         filtros,
         user,
+        paginaActual,
       ]
     )
 
@@ -506,9 +528,11 @@ export default function ElPeruanoPage() {
 
       try {
 
+        setPaginaActual(1)
+
         await gastarCredito()
 
-        await cargarResultados()
+        await cargarResultados(1)
 
 
       } catch (error) {
@@ -1343,6 +1367,132 @@ export default function ElPeruanoPage() {
 
         </div>
 
+
+        {/* ================================================== */}
+        {/* PAGINACIÓN */}
+        {/* ================================================== */}
+
+        {!cargando &&
+          resultados.length > 0 &&
+          totalPaginas > 1 && (
+            <div className="flex flex-col items-center gap-3 py-8">
+
+              <div className="flex items-center gap-1">
+
+                {/* Anterior */}
+                <button
+                  type="button"
+                  disabled={paginaActual <= 1}
+                  onClick={() => cargarResultados(paginaActual - 1)}
+                  className="
+                    min-w-10 h-10 px-3
+                    rounded-lg
+                    text-sm font-medium
+                    text-slate-300
+                    hover:bg-slate-700/60
+                    disabled:opacity-30
+                    disabled:cursor-not-allowed
+                    transition
+                  "
+                >
+                  ‹
+                </button>
+
+                {/* Números estilo Google */}
+                {(() => {
+                  const paginas: (number | 'ellipsis')[] = []
+
+                  if (totalPaginas <= 7) {
+                    for (let i = 1; i <= totalPaginas; i++) {
+                      paginas.push(i)
+                    }
+                  } else {
+                    paginas.push(1)
+
+                    if (paginaActual > 4) {
+                      paginas.push('ellipsis')
+                    }
+
+                    const inicio = Math.max(2, paginaActual - 2)
+                    const fin = Math.min(
+                      totalPaginas - 1,
+                      paginaActual + 2
+                    )
+
+                    for (let i = inicio; i <= fin; i++) {
+                      paginas.push(i)
+                    }
+
+                    if (paginaActual < totalPaginas - 3) {
+                      paginas.push('ellipsis')
+                    }
+
+                    paginas.push(totalPaginas)
+                  }
+
+                  return paginas.map((pagina, index) =>
+                    pagina === 'ellipsis' ? (
+                      <span
+                        key={`ellipsis-${index}`}
+                        className="
+                          w-10 h-10
+                          flex items-center justify-center
+                          text-slate-500
+                        "
+                      >
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={pagina}
+                        type="button"
+                        disabled={pagina === paginaActual}
+                        onClick={() => cargarResultados(pagina)}
+                        className={`
+                          w-10 h-10
+                          rounded-full
+                          text-sm font-medium
+                          transition
+                          ${
+                            pagina === paginaActual
+                              ? 'bg-amber-500 text-slate-950 font-bold cursor-default'
+                              : 'text-slate-300 hover:bg-slate-700/60'
+                          }
+                        `}
+                      >
+                        {pagina}
+                      </button>
+                    )
+                  )
+                })()}
+
+                {/* Siguiente */}
+                <button
+                  type="button"
+                  disabled={paginaActual >= totalPaginas}
+                  onClick={() => cargarResultados(paginaActual + 1)}
+                  className="
+                    min-w-10 h-10 px-3
+                    rounded-lg
+                    text-sm font-medium
+                    text-slate-300
+                    hover:bg-slate-700/60
+                    disabled:opacity-30
+                    disabled:cursor-not-allowed
+                    transition
+                  "
+                >
+                  ›
+                </button>
+
+              </div>
+
+              <div className="text-xs text-slate-500">
+                Página {paginaActual} de {totalPaginas}
+              </div>
+
+            </div>
+          )}
 
         {/* ================================================== */}
         {/* SIN RESULTADOS */}
