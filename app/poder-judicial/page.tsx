@@ -41,6 +41,8 @@ const STOPWORDS = [
 interface ResultadoBusqueda {
   id: string
 
+  pagina_inicio:string;
+  
   score: number
 
   casacion_id: string
